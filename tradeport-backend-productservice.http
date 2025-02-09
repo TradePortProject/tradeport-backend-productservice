@@ -1,6 +1,0 @@
-@tradeport_backend_productservice_HostAddress = http://localhost:5259
-
-GET {{tradeport_backend_productservice_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
