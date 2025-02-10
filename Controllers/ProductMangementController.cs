@@ -22,21 +22,27 @@ namespace ProductManagement.Controllers
             this.dbContext = appDbContext;
             this.productRepository = prodRepo;
 
-        }
+        }     
 
-        //Get all products
+
         [HttpGet]
-        public async Task<IActionResult> GetAllProdcuts()
+        public async Task<IActionResult> GetAllProducts()
         {
-            //Get data from the database
-            var productsModel = await productRepository.GetAllProdcutsAsync();
-
-            //Map the above date to the DTO object
-            var productDTO = new List<ProductDTO>();
-
-            foreach (var product in productsModel)
+            try
             {
-                productDTO.Add(new ProductDTO()
+                var productsModel = await productRepository.GetAllProdcutsAsync();
+
+                if (productsModel == null || !productsModel.Any())
+                {
+                    return NotFound(new
+                    {
+                        Message = "No products found.",                       
+                        ErrorMessage = "No data available."
+                    });
+                }
+
+                // Map database entities to DTOs
+                var productDTOs = productsModel.Select(product => new ProductDTO
                 {
                     ProductID = product.ProductID,
                     ProductCode = product.ProductCode,
@@ -53,159 +59,195 @@ namespace ProductManagement.Controllers
                     CreatedOn = product.CreatedOn,
                     UpdatedOn = product.UpdatedOn,
                     IsActive = product.IsActive
-                }
-                    );
+                }).ToList();
 
+                return Ok(new
+                {
+                    Message = "Products retrieved successfully.",
+                    Products = productDTOs,
+                    ErrorMessage = string.Empty
+                });
             }
-;
-            //Return DTO
-            return Ok(productDTO);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while retrieving the products.",                   
+                    ErrorMessage = ex.Message
+                });
+            }
         }
 
-        //Get single product
+
         [HttpGet]
         [Route("{id}")]
         public async Task<IActionResult> GetProductById(Guid id)
         {
-            var prodcutById = await productRepository.GetProductByIdAsync(id);
-
-            if (GetProductById == null)
+            try
             {
-                return NotFound();
+                var productById = await productRepository.GetProductByIdAsync(id);
+
+                if (productById == null)
+                {
+                    return NotFound(new
+                    {
+                        Message = "Product not found.",
+                        ProductCode = string.Empty,
+                        ErrorMessage = "Invalid product ID."
+                    });
+                }
+
+                // Map the database entity to DTO
+                var productDto = new ProductDTO()
+                {
+                    ProductID = productById.ProductID,
+                    ProductCode = productById.ProductCode,
+                    ManufacturerID = productById.ManufacturerID,
+                    ProductName = productById.ProductName,
+                    Description = productById.Description,
+                    Category = productById.Category,
+                    WholesalePrice = productById.WholesalePrice,
+                    RetailPrice = productById.RetailPrice,
+                    Quantity = productById.Quantity,
+                    RetailCurrency = productById.RetailCurrency,
+                    WholeSaleCurrency = productById.WholeSaleCurrency,
+                    ShippingCost = productById.ShippingCost,
+                    CreatedOn = productById.CreatedOn,
+                    UpdatedOn = productById.UpdatedOn,
+                    IsActive = productById.IsActive
+                };
+
+                return Ok(new
+                {
+                    Message = "Product retrieved successfully.",
+                    Product = productDto,
+                    ErrorMessage = string.Empty
+                });
             }
-
-            //Map DTO to the data from DB
-            var productDto = new ProductDTO()
+            catch (Exception ex)
             {
-                ProductID = prodcutById.ProductID,
-                ProductCode = prodcutById.ProductCode,
-                ManufacturerID = prodcutById.ManufacturerID,
-                ProductName = prodcutById.ProductName,
-                Description = prodcutById.Description,
-                Category = prodcutById.Category,
-                WholesalePrice = prodcutById.WholesalePrice,
-                RetailPrice = prodcutById.RetailPrice,
-                Quantity = prodcutById.Quantity,
-                RetailCurrency = prodcutById.RetailCurrency,
-                WholeSaleCurrency = prodcutById.WholeSaleCurrency,
-                ShippingCost = prodcutById.ShippingCost,
-                CreatedOn = prodcutById.CreatedOn,
-                UpdatedOn = prodcutById.UpdatedOn,
-                IsActive = prodcutById.IsActive
-            };
-
-            return Ok(productDto);
-
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while retrieving the product.",
+                    ProductCode = string.Empty,
+                    ErrorMessage = ex.Message
+                });
+            }
         }
 
+             
 
         [HttpPost]
         public async Task<IActionResult> CreateProduct([FromBody] CreateProductDTO addProductRequestDto)
         {
-            var productModel = new Product()
+           
+            try
             {
-                ProductCode = addProductRequestDto.ProductCode,
-                //ManufacturerID = addProductRequestDto.ManufacturerID,
-                ProductName = addProductRequestDto.ProductName,
-                Description = addProductRequestDto.Description,
-                Category = addProductRequestDto.Category,
-                WholesalePrice = addProductRequestDto.WholesalePrice,
-                RetailPrice = addProductRequestDto.RetailPrice,
-                Quantity = addProductRequestDto.Quantity,
-                RetailCurrency = addProductRequestDto.RetailCurrency,
-                WholeSaleCurrency = addProductRequestDto.WholeSaleCurrency,
-                ShippingCost = addProductRequestDto.ShippingCost,
-                CreatedOn = addProductRequestDto.CreatedOn,
-                UpdatedOn = addProductRequestDto.UpdatedOn,
-                IsActive = addProductRequestDto.IsActive
+                var productModel = new Product()
+                {
+                    ProductCode = addProductRequestDto.ProductCode,
+                    ProductName = addProductRequestDto.ProductName,
+                    Description = addProductRequestDto.Description,
+                    Category = addProductRequestDto.Category,
+                    WholesalePrice = addProductRequestDto.WholesalePrice,
+                    RetailPrice = addProductRequestDto.RetailPrice,
+                    Quantity = addProductRequestDto.Quantity,
+                    RetailCurrency = addProductRequestDto.RetailCurrency,
+                    WholeSaleCurrency = addProductRequestDto.WholeSaleCurrency,
+                    ShippingCost = addProductRequestDto.ShippingCost,
+                    CreatedOn = addProductRequestDto.CreatedOn,
+                    UpdatedOn = addProductRequestDto.UpdatedOn,
+                    IsActive = addProductRequestDto.IsActive
+                };
 
-            };
+                // Use Repository to create Product
+                productModel = await productRepository.CreateProductAsync(productModel);
 
-            //Use Model to crate Product
-            productModel = await productRepository.CreateProductAsync(productModel);          
-            
+                var response = new
+                {
+                    Message = "Product created successfully.",
+                    ProductCode = productModel.ProductCode,
+                    ErrorMessage = ""
+                };
 
-            //Map the product Model back to DTO
-            var productDto = new ProductDTO()
+                return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, response);
+            }
+            catch (Exception ex)
             {
-                ProductID = productModel.ProductID,
-                ProductCode = productModel.ProductCode,
-                ManufacturerID = productModel.ManufacturerID,
-                ProductName = productModel.ProductName,
-                Description = productModel.Description,
-                Category = productModel.Category,
-                WholesalePrice = productModel.WholesalePrice,
-                RetailPrice = productModel.RetailPrice,
-                Quantity = productModel.Quantity,
-                RetailCurrency = productModel.RetailCurrency,
-                WholeSaleCurrency = productModel.WholeSaleCurrency,
-                ShippingCost = productModel.ShippingCost,
-                CreatedOn = productModel.CreatedOn,
-                UpdatedOn = productModel.UpdatedOn,
-                IsActive = productModel.IsActive
-            };
+                var response = new
+                {
+                    Message = "Product creation failed.",
+                    ProductCode = string.Empty,
+                    ErrorMessage = ex.Message
+                };
 
-
-            return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, productModel);
+                return StatusCode(500, response);
+            }
         }
+
 
         [HttpPut]
         [Route("{id}")]
         public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] UpdateProductDTO updateProductRequestDto)
         {
-
-            //Map incoming DTo to Product 
-
-            var productModel = new Product()
+            try
             {
-                ProductCode = updateProductRequestDto.ProductCode,
-                //ManufacturerID = updateProductRequestDto.ManufacturerID,
-                ProductName = updateProductRequestDto.ProductName,
-                Description = updateProductRequestDto.Description,
-                Category = updateProductRequestDto.Category,
-                WholesalePrice = updateProductRequestDto.WholesalePrice,
-                RetailPrice = updateProductRequestDto.RetailPrice,
-                Quantity = updateProductRequestDto.Quantity,
-                RetailCurrency = updateProductRequestDto.RetailCurrency,
-                WholeSaleCurrency = updateProductRequestDto.WholeSaleCurrency,
-                ShippingCost = updateProductRequestDto.ShippingCost,
-                CreatedOn = updateProductRequestDto.CreatedOn,
-                UpdatedOn = updateProductRequestDto.UpdatedOn,
-                IsActive = updateProductRequestDto.IsActive
-            };
+                // Check if the product exists
+                var existingProduct = await productRepository.GetProductByIdAsync(id);
+                if (existingProduct == null)
+                {
+                    return NotFound(new
+                    {
+                        Message = "Product not found.",
+                        ProductCode = string.Empty,
+                        ErrorMessage = "Invalid product ID."
+                    });
+                }
 
+                // Update properties
+                existingProduct.ProductCode = updateProductRequestDto.ProductCode;                
+                existingProduct.ProductName = updateProductRequestDto.ProductName;
+                existingProduct.Description = updateProductRequestDto.Description;
+                existingProduct.Category = updateProductRequestDto.Category;
+                existingProduct.WholesalePrice = updateProductRequestDto.WholesalePrice;
+                existingProduct.RetailPrice = updateProductRequestDto.RetailPrice;
+                existingProduct.Quantity = updateProductRequestDto.Quantity;
+                existingProduct.RetailCurrency = updateProductRequestDto.RetailCurrency;
+                existingProduct.WholeSaleCurrency = updateProductRequestDto.WholeSaleCurrency;
+                existingProduct.ShippingCost = updateProductRequestDto.ShippingCost;
+                existingProduct.CreatedOn = updateProductRequestDto.CreatedOn;
+                existingProduct.UpdatedOn = DateTime.UtcNow;
+                existingProduct.IsActive = updateProductRequestDto.IsActive;
 
-            //Check if the record of the Id exists
-            productModel = await productRepository.UpdateProductAsync(id, productModel);
+                // Update the product in the repository
+                var updatedProduct = await productRepository.UpdateProductAsync(id, existingProduct);
 
-          if(productModel == null)
-            {
-                return NotFound();
+                if (updatedProduct == null)
+                {
+                    return StatusCode(500, new
+                    {
+                        Message = "Failed to update product.",
+                        ProductCode = string.Empty,
+                        ErrorMessage = "Internal server error."
+                    });
+                }
+
+                return Ok(new
+                {
+                    Message = "Product updated successfully.",
+                    ProductCode = updatedProduct.ProductCode,
+                    ErrorMessage = string.Empty
+                });
             }
-
-
-            //Map the product Model back to DTO
-            var productDto = new ProductDTO()
+            catch (Exception ex)
             {
-                ProductCode = productModel.ProductCode,
-               // ManufacturerID = productModel.ManufacturerID,
-                ProductName = productModel.ProductName,
-                Description = productModel.Description,
-                Category = productModel.Category,
-                WholesalePrice = productModel.WholesalePrice,
-                RetailPrice = productModel.RetailPrice,
-                Quantity = productModel.Quantity,
-                RetailCurrency = productModel.RetailCurrency,
-                WholeSaleCurrency = productModel.WholeSaleCurrency,
-                ShippingCost = productModel.ShippingCost,
-                CreatedOn = productModel.CreatedOn,
-                UpdatedOn = productModel.UpdatedOn,
-                IsActive = productModel.IsActive
-
-            };
-
-
-            return Ok(productDto);
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while updating the product.",
+                    ProductCode = string.Empty,
+                    ErrorMessage = ex.Message
+                });
+            }
         }
 
 
@@ -213,21 +255,51 @@ namespace ProductManagement.Controllers
         [Route("{id}")]
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
-
-            //Check if the record of the Id exists
-            var prodcutById = await productRepository.DeleteAysnc(id);
-
-            if (prodcutById == null)
+            try
             {
-                return NotFound();
+                // Check if the product exists
+                var productById = await productRepository.GetProductByIdAsync(id);
+                if (productById == null)
+                {
+                    return NotFound(new
+                    {
+                        Message = "Product not found.",
+                        ProductCode = string.Empty,
+                        ErrorMessage = "Invalid product ID."
+                    });
+                }
+
+                // Delete the product from repository
+                var deletedProduct = await productRepository.DeleteAysnc(id);
+
+                if (deletedProduct == null)
+                {
+                    return StatusCode(500, new
+                    {
+                        Message = "Failed to delete product.",
+                        ProductCode = string.Empty,
+                        ErrorMessage = "Internal server error."
+                    });
+                }
+
+                return Ok(new
+                {
+                    Message = "Product deleted successfully.",
+                    ProductCode =  deletedProduct.ProductCode,
+                    ErrorMessage = string.Empty
+                });
             }
-
-            //Use Model to update Product
-            dbContext.Products.Remove(prodcutById);
-            await dbContext.SaveChangesAsync();            
-
-            return Ok("Record deleted successfully");
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while deleting the product.",
+                    ProductCode = string.Empty,
+                    ErrorMessage = ex.Message
+                });
+            }
         }
+
 
     }
 }
