@@ -10,7 +10,7 @@
 
         public string Description { get; set; }
 
-        public int Category { get; set; }
+        public string CategoryDescription { get; set; }
 
         public decimal? WholesalePrice { get; set; }
 
@@ -28,6 +28,6 @@
 
         public DateTime UpdatedOn { get; set; }
 
-        public bool? IsActive { get; set; }
+        public bool IsActive { get; set; }
     }
 }

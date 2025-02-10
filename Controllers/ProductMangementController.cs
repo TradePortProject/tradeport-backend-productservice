@@ -6,6 +6,7 @@ using ProductManagement.Data;
 using ProductManagement.Models;
 using ProductManagement.Models.DTO;
 using ProductManagement.Repositories;
+using ProductManagement.Utilities;
 
 
 namespace ProductManagement.Controllers
@@ -43,7 +44,7 @@ namespace ProductManagement.Controllers
                     ManufacturerID = product.ManufacturerID,
                     ProductName = product.ProductName,
                     Description = product.Description,
-                    Category = product.Category,
+                    CategoryDescription = EnumHelper.GetDescription<Category>(product.Category),
                     WholesalePrice = product.WholesalePrice,
                     RetailPrice = product.RetailPrice,
                     Quantity = product.Quantity,
@@ -53,8 +54,9 @@ namespace ProductManagement.Controllers
                     CreatedOn = product.CreatedOn,
                     UpdatedOn = product.UpdatedOn,
                     IsActive = product.IsActive
-                }
-                    );
+                });
+
+
 
             }
 ;
@@ -82,7 +84,8 @@ namespace ProductManagement.Controllers
                 ManufacturerID = prodcutById.ManufacturerID,
                 ProductName = prodcutById.ProductName,
                 Description = prodcutById.Description,
-                Category = prodcutById.Category,
+                //Category = prodcutById.Category,
+                CategoryDescription = EnumHelper.GetDescription<Category>(prodcutById.Category),
                 WholesalePrice = prodcutById.WholesalePrice,
                 RetailPrice = prodcutById.RetailPrice,
                 Quantity = prodcutById.Quantity,
@@ -108,7 +111,8 @@ namespace ProductManagement.Controllers
                 //ManufacturerID = addProductRequestDto.ManufacturerID,
                 ProductName = addProductRequestDto.ProductName,
                 Description = addProductRequestDto.Description,
-                Category = addProductRequestDto.Category,
+                //Category = addProductRequestDto.Category,
+                Category = EnumHelper.GetEnumFromDescription<Category>(addProductRequestDto.CategoryDescription),
                 WholesalePrice = addProductRequestDto.WholesalePrice,
                 RetailPrice = addProductRequestDto.RetailPrice,
                 Quantity = addProductRequestDto.Quantity,
@@ -122,8 +126,8 @@ namespace ProductManagement.Controllers
             };
 
             //Use Model to crate Product
-            productModel = await productRepository.CreateProductAsync(productModel);          
-            
+            productModel = await productRepository.CreateProductAsync(productModel);
+
 
             //Map the product Model back to DTO
             var productDto = new ProductDTO()
@@ -133,7 +137,7 @@ namespace ProductManagement.Controllers
                 ManufacturerID = productModel.ManufacturerID,
                 ProductName = productModel.ProductName,
                 Description = productModel.Description,
-                Category = productModel.Category,
+                //Category = EnumHelper.GetEnumFromDescription<Category>(addProductRequestDto.CategoryDescription),
                 WholesalePrice = productModel.WholesalePrice,
                 RetailPrice = productModel.RetailPrice,
                 Quantity = productModel.Quantity,
@@ -162,7 +166,7 @@ namespace ProductManagement.Controllers
                 //ManufacturerID = updateProductRequestDto.ManufacturerID,
                 ProductName = updateProductRequestDto.ProductName,
                 Description = updateProductRequestDto.Description,
-                Category = updateProductRequestDto.Category,
+                Category = EnumHelper.GetEnumFromDescription<Category>(updateProductRequestDto.CategoryDescription),
                 WholesalePrice = updateProductRequestDto.WholesalePrice,
                 RetailPrice = updateProductRequestDto.RetailPrice,
                 Quantity = updateProductRequestDto.Quantity,
@@ -178,34 +182,34 @@ namespace ProductManagement.Controllers
             //Check if the record of the Id exists
             productModel = await productRepository.UpdateProductAsync(id, productModel);
 
-          if(productModel == null)
+            if (productModel == null)
             {
                 return NotFound();
             }
 
 
-            //Map the product Model back to DTO
-            var productDto = new ProductDTO()
-            {
-                ProductCode = productModel.ProductCode,
-               // ManufacturerID = productModel.ManufacturerID,
-                ProductName = productModel.ProductName,
-                Description = productModel.Description,
-                Category = productModel.Category,
-                WholesalePrice = productModel.WholesalePrice,
-                RetailPrice = productModel.RetailPrice,
-                Quantity = productModel.Quantity,
-                RetailCurrency = productModel.RetailCurrency,
-                WholeSaleCurrency = productModel.WholeSaleCurrency,
-                ShippingCost = productModel.ShippingCost,
-                CreatedOn = productModel.CreatedOn,
-                UpdatedOn = productModel.UpdatedOn,
-                IsActive = productModel.IsActive
+            ////Map the product Model back to DTO
+            //var productDto = new ProductDTO()
+            //{
+            //    ProductCode = productModel.ProductCode,
+            //    // ManufacturerID = productModel.ManufacturerID,
+            //    ProductName = productModel.ProductName,
+            //    Description = productModel.Description,
+            //    //Category = productModel.Category,
+            //    WholesalePrice = productModel.WholesalePrice,
+            //    RetailPrice = productModel.RetailPrice,
+            //    Quantity = productModel.Quantity,
+            //    RetailCurrency = productModel.RetailCurrency,
+            //    WholeSaleCurrency = productModel.WholeSaleCurrency,  
+            //    ShippingCost = productModel.ShippingCost,
+            //    CreatedOn = productModel.CreatedOn,
+            //    UpdatedOn = productModel.UpdatedOn,
+            //    IsActive = productModel.IsActive
 
-            };
+            //};
 
 
-            return Ok(productDto);
+            return Ok("Record updated successfully");
         }
 
 
@@ -214,20 +218,20 @@ namespace ProductManagement.Controllers
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
 
-            //Check if the record of the Id exists
-            var prodcutById = await productRepository.DeleteAysnc(id);
+            var product = await productRepository.GetProductByIdAsync(id);
 
-            if (prodcutById == null)
+            if (product == null)
             {
                 return NotFound();
             }
 
-            //Use Model to update Product
-            dbContext.Products.Remove(prodcutById);
-            await dbContext.SaveChangesAsync();            
+            product.IsActive = false;
+
+            await productRepository.UpdateProductAsync(id, product);
 
             return Ok("Record deleted successfully");
         }
 
     }
 }
+

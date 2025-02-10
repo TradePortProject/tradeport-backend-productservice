@@ -49,6 +49,6 @@ namespace ProductManagement.Models
         [Required]
         public DateTime UpdatedOn { get; set; }
 
-        public bool? IsActive { get; set; }
+        public bool IsActive { get; set; }
     }
 }
