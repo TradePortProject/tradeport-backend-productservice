@@ -235,26 +235,6 @@ namespace ProductManagement.Controllers
                     });
                 }
 
-
-                ////Map the product Model back to DTO
-                //var productDto = new ProductDTO()
-                //{
-                //    ProductCode = productModel.ProductCode,
-                //    // ManufacturerID = productModel.ManufacturerID,
-                //    ProductName = productModel.ProductName,
-                //    Description = productModel.Description,
-                //    //Category = productModel.Category,
-                //    WholesalePrice = productModel.WholesalePrice,
-                //    RetailPrice = productModel.RetailPrice,
-                //    Quantity = productModel.Quantity,
-                //    RetailCurrency = productModel.RetailCurrency,
-                //    WholeSaleCurrency = productModel.WholeSaleCurrency,  
-                //    ShippingCost = productModel.ShippingCost,
-                //    CreatedOn = productModel.CreatedOn,
-                //    UpdatedOn = productModel.UpdatedOn,
-                //    IsActive = productModel.IsActive
-
-                //};
             
                 return Ok(new
                 {
