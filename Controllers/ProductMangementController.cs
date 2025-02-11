@@ -23,7 +23,7 @@ namespace ProductManagement.Controllers
             this.dbContext = appDbContext;
             this.productRepository = prodRepo;
 
-        }     
+        }
 
 
         [HttpGet]
@@ -37,7 +37,7 @@ namespace ProductManagement.Controllers
                 {
                     return NotFound(new
                     {
-                        Message = "No products found.",                       
+                        Message = "No products found.",
                         ErrorMessage = "No data available."
                     });
                 }
@@ -61,15 +61,18 @@ namespace ProductManagement.Controllers
                     UpdatedOn = product.UpdatedOn,
                     IsActive = product.IsActive
                 }).ToList();
-
-
-
+                return Ok(new
+                {
+                    Message = "Products retrieved successfully.",
+                    Products = productDTOs,
+                    ErrorMessage = string.Empty
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
-                    Message = "An error occurred while retrieving the products.",                   
+                    Message = "An error occurred while retrieving the products.",
                     ErrorMessage = ex.Message
                 });
             }
@@ -102,7 +105,7 @@ namespace ProductManagement.Controllers
                     ManufacturerID = productById.ManufacturerID,
                     ProductName = productById.ProductName,
                     Description = productById.Description,
-                    CategoryDescription = EnumHelper.GetDescription<Category>(prodcutById.Category),
+                    CategoryDescription = EnumHelper.GetDescription<Category>(productById.Category),
                     WholesalePrice = productById.WholesalePrice,
                     RetailPrice = productById.RetailPrice,
                     Quantity = productById.Quantity,
@@ -132,30 +135,32 @@ namespace ProductManagement.Controllers
             }
         }
 
-             
+
 
         [HttpPost]
         public async Task<IActionResult> CreateProduct([FromBody] CreateProductDTO addProductRequestDto)
         {
-            var productModel = new Product()
+            try
             {
-                ProductCode = addProductRequestDto.ProductCode,
-                //ManufacturerID = addProductRequestDto.ManufacturerID,
-                ProductName = addProductRequestDto.ProductName,
-                Description = addProductRequestDto.Description,
-                //Category = addProductRequestDto.Category,
-                Category = EnumHelper.GetEnumFromDescription<Category>(addProductRequestDto.CategoryDescription),
-                WholesalePrice = addProductRequestDto.WholesalePrice,
-                RetailPrice = addProductRequestDto.RetailPrice,
-                Quantity = addProductRequestDto.Quantity,
-                RetailCurrency = addProductRequestDto.RetailCurrency,
-                WholeSaleCurrency = addProductRequestDto.WholeSaleCurrency,
-                ShippingCost = addProductRequestDto.ShippingCost,
-                CreatedOn = addProductRequestDto.CreatedOn,
-                UpdatedOn = addProductRequestDto.UpdatedOn,
-                IsActive = addProductRequestDto.IsActive
+                var productModel = new Product()
+                {
+                    ProductCode = addProductRequestDto.ProductCode,
+                    //ManufacturerID = addProductRequestDto.ManufacturerID,
+                    ProductName = addProductRequestDto.ProductName,
+                    Description = addProductRequestDto.Description,
+                    //Category = addProductRequestDto.Category,
+                    Category = EnumHelper.GetEnumFromDescription<Category>(addProductRequestDto.CategoryDescription),
+                    WholesalePrice = addProductRequestDto.WholesalePrice,
+                    RetailPrice = addProductRequestDto.RetailPrice,
+                    Quantity = addProductRequestDto.Quantity,
+                    RetailCurrency = addProductRequestDto.RetailCurrency,
+                    WholeSaleCurrency = addProductRequestDto.WholeSaleCurrency,
+                    ShippingCost = addProductRequestDto.ShippingCost,
+                    CreatedOn = addProductRequestDto.CreatedOn,
+                    UpdatedOn = addProductRequestDto.UpdatedOn,
+                    IsActive = addProductRequestDto.IsActive
 
-            };
+                };
 
                 // Use Repository to create Product
                 productModel = await productRepository.CreateProductAsync(productModel);
@@ -169,6 +174,7 @@ namespace ProductManagement.Controllers
 
                 return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, response);
             }
+
             catch (Exception ex)
             {
                 var response = new
@@ -202,10 +208,10 @@ namespace ProductManagement.Controllers
                 }
 
                 // Update properties
-                existingProduct.ProductCode = updateProductRequestDto.ProductCode;                
+                existingProduct.ProductCode = updateProductRequestDto.ProductCode;
                 existingProduct.ProductName = updateProductRequestDto.ProductName;
                 existingProduct.Description = updateProductRequestDto.Description;
-                Category = EnumHelper.GetEnumFromDescription<Category>(updateProductRequestDto.CategoryDescription),
+                existingProduct.Category = EnumHelper.GetEnumFromDescription<Category>(updateProductRequestDto.CategoryDescription);
                 existingProduct.WholesalePrice = updateProductRequestDto.WholesalePrice;
                 existingProduct.RetailPrice = updateProductRequestDto.RetailPrice;
                 existingProduct.Quantity = updateProductRequestDto.Quantity;
@@ -230,28 +236,28 @@ namespace ProductManagement.Controllers
                 }
 
 
-            ////Map the product Model back to DTO
-            //var productDto = new ProductDTO()
-            //{
-            //    ProductCode = productModel.ProductCode,
-            //    // ManufacturerID = productModel.ManufacturerID,
-            //    ProductName = productModel.ProductName,
-            //    Description = productModel.Description,
-            //    //Category = productModel.Category,
-            //    WholesalePrice = productModel.WholesalePrice,
-            //    RetailPrice = productModel.RetailPrice,
-            //    Quantity = productModel.Quantity,
-            //    RetailCurrency = productModel.RetailCurrency,
-            //    WholeSaleCurrency = productModel.WholeSaleCurrency,  
-            //    ShippingCost = productModel.ShippingCost,
-            //    CreatedOn = productModel.CreatedOn,
-            //    UpdatedOn = productModel.UpdatedOn,
-            //    IsActive = productModel.IsActive
+                ////Map the product Model back to DTO
+                //var productDto = new ProductDTO()
+                //{
+                //    ProductCode = productModel.ProductCode,
+                //    // ManufacturerID = productModel.ManufacturerID,
+                //    ProductName = productModel.ProductName,
+                //    Description = productModel.Description,
+                //    //Category = productModel.Category,
+                //    WholesalePrice = productModel.WholesalePrice,
+                //    RetailPrice = productModel.RetailPrice,
+                //    Quantity = productModel.Quantity,
+                //    RetailCurrency = productModel.RetailCurrency,
+                //    WholeSaleCurrency = productModel.WholeSaleCurrency,  
+                //    ShippingCost = productModel.ShippingCost,
+                //    CreatedOn = productModel.CreatedOn,
+                //    UpdatedOn = productModel.UpdatedOn,
+                //    IsActive = productModel.IsActive
 
-            //};
+                //};
 
 
-            return Ok("Record updated successfully");
+                return Ok("Record updated successfully");
                 return Ok(new
                 {
                     Message = "Product updated successfully.",
@@ -292,13 +298,13 @@ namespace ProductManagement.Controllers
                 // Delete the product from repository
                 var deletedProduct = await productRepository.DeleteAysnc(id);
 
-            product.IsActive = false;
+                productById.IsActive = false;
 
-            await productRepository.UpdateProductAsync(id, product);
+                await productRepository.UpdateProductAsync(id, productById);
                 return Ok(new
                 {
                     Message = "Product deleted successfully.",
-                    ProductCode =  deletedProduct.ProductCode,
+                    ProductCode = productById.ProductCode,
                     ErrorMessage = string.Empty
                 });
             }
