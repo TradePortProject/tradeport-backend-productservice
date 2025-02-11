@@ -2,8 +2,6 @@
 {
     public class UpdateProductDTO
     {
-        public string ProductCode { get; set; }
-
       //  public Guid? ManufacturerID { get; set; }
 
         public string ProductName { get; set; }
@@ -23,8 +21,6 @@
         public string WholeSaleCurrency { get; set; }
 
         public decimal? ShippingCost { get; set; }
-
-        public DateTime CreatedOn { get; set; }
 
         public DateTime UpdatedOn { get; set; }
 

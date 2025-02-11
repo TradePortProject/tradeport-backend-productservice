@@ -31,7 +31,7 @@ namespace ProductManagement.Controllers
         {
             try
             {
-                var productsModel = await productRepository.GetAllProdcutsAsync();
+                var productsModel = await productRepository.GetAllProductsAsync();
 
                 if (productsModel == null || !productsModel.Any())
                 {
@@ -144,11 +144,9 @@ namespace ProductManagement.Controllers
             {
                 var productModel = new Product()
                 {
-                    ProductCode = addProductRequestDto.ProductCode,
-                    //ManufacturerID = addProductRequestDto.ManufacturerID,
+                    ManufacturerID = addProductRequestDto.ManufacturerID,
                     ProductName = addProductRequestDto.ProductName,
                     Description = addProductRequestDto.Description,
-                    //Category = addProductRequestDto.Category,
                     Category = EnumHelper.GetEnumFromDescription<Category>(addProductRequestDto.CategoryDescription),
                     WholesalePrice = addProductRequestDto.WholesalePrice,
                     RetailPrice = addProductRequestDto.RetailPrice,
@@ -156,9 +154,9 @@ namespace ProductManagement.Controllers
                     RetailCurrency = addProductRequestDto.RetailCurrency,
                     WholeSaleCurrency = addProductRequestDto.WholeSaleCurrency,
                     ShippingCost = addProductRequestDto.ShippingCost,
-                    CreatedOn = addProductRequestDto.CreatedOn,
-                    UpdatedOn = addProductRequestDto.UpdatedOn,
-                    IsActive = addProductRequestDto.IsActive
+                    CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow,
+                    IsActive = true
 
                 };
 
@@ -208,7 +206,6 @@ namespace ProductManagement.Controllers
                 }
 
                 // Update properties
-                existingProduct.ProductCode = updateProductRequestDto.ProductCode;
                 existingProduct.ProductName = updateProductRequestDto.ProductName;
                 existingProduct.Description = updateProductRequestDto.Description;
                 existingProduct.Category = EnumHelper.GetEnumFromDescription<Category>(updateProductRequestDto.CategoryDescription);
@@ -218,9 +215,8 @@ namespace ProductManagement.Controllers
                 existingProduct.RetailCurrency = updateProductRequestDto.RetailCurrency;
                 existingProduct.WholeSaleCurrency = updateProductRequestDto.WholeSaleCurrency;
                 existingProduct.ShippingCost = updateProductRequestDto.ShippingCost;
-                existingProduct.CreatedOn = updateProductRequestDto.CreatedOn;
                 existingProduct.UpdatedOn = DateTime.UtcNow;
-                existingProduct.IsActive = updateProductRequestDto.IsActive;
+                //existingProduct.IsActive = updateProductRequestDto.IsActive;
 
                 // Update the product in the repository
                 var updatedProduct = await productRepository.UpdateProductAsync(id, existingProduct);
