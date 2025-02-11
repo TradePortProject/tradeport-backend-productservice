@@ -2,8 +2,6 @@
 {
     public class CreateProductDTO
     {
-        public string ProductCode { get; set; }
-
         public Guid? ManufacturerID { get; set; }
 
         public string ProductName { get; set; }
@@ -25,10 +23,6 @@
         public decimal? ShippingCost { get; set; }
 
         public DateTime CreatedOn { get; set; }
-
-        public DateTime UpdatedOn { get; set; }
-
-        public bool IsActive { get; set; }
 
     }
 }

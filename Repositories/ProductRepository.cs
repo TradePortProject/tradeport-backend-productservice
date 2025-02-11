@@ -15,22 +15,19 @@ namespace ProductManagement.Repositories
             this.dbContext = dbContextRepo;
         }
 
-
-
-        public async Task<List<Product>> GetAllProdcutsAsync()
+        public async Task<List<Product>> GetAllProductsAsync()
         {
             return await FindByCondition(product=> product.IsActive).OrderBy(x => x.CreatedOn).ToListAsync();
-            //   return await dbContext.Products.ToListAsync();
         }
 
         public async Task<Product> GetProductByIdAsync(Guid Id)
         {
             return await FindByCondition(product => product.IsActive).OrderBy(x => x.ProductCode).FirstOrDefaultAsync();
-            //return await dbContext.Products.FindAsync(Id);
         }
 
         public async Task<Product> CreateProductAsync(Product product)
         {
+            product.ProductCode = await GetProductCodeAsync();
             await dbContext.Products.AddAsync(product);
             await dbContext.SaveChangesAsync();
             return product;
@@ -38,46 +35,49 @@ namespace ProductManagement.Repositories
 
         public async Task<Product?> UpdateProductAsync(Guid id, Product product)
         {
-            var prodcutById = await dbContext.Products.FindAsync(id);
+            var productObj = await dbContext.Products.FindAsync(id);
 
-            if (prodcutById == null)
+            if (productObj == null)
             {
                 return null;
             }
-
-            prodcutById.ProductCode = product.ProductCode;
-            //prodcutById.ManufacturerID = product.ManufacturerID;
-            prodcutById.ProductName = product.ProductName;
-            prodcutById.Description = product.Description;
-            prodcutById.Category = product.Category;
-            prodcutById.WholesalePrice = product.WholesalePrice;
-            prodcutById.RetailPrice = product.RetailPrice;
-            prodcutById.Quantity = product.Quantity;
-            prodcutById.RetailCurrency = product.RetailCurrency;
-            prodcutById.WholeSaleCurrency = product.WholeSaleCurrency;
-            prodcutById.ShippingCost = product.ShippingCost;
-            prodcutById.CreatedOn = product.CreatedOn;
-            prodcutById.UpdatedOn = product.UpdatedOn;
-            prodcutById.IsActive = product.IsActive;
+            productObj.ManufacturerID = product.ManufacturerID;
+            productObj.ProductName = product.ProductName;
+            productObj.Description = product.Description;
+            productObj.Category = product.Category;
+            productObj.WholesalePrice = product.WholesalePrice;
+            productObj.RetailPrice = product.RetailPrice;
+            productObj.Quantity = product.Quantity;
+            productObj.RetailCurrency = product.RetailCurrency;
+            productObj.WholeSaleCurrency = product.WholeSaleCurrency;
+            productObj.ShippingCost = product.ShippingCost;
+            productObj.CreatedOn = product.CreatedOn;
+            productObj.UpdatedOn = product.UpdatedOn;
+            productObj.IsActive = product.IsActive;
 
             await dbContext.SaveChangesAsync();
-            return prodcutById;
+            return productObj;
         }
 
-        public async Task<Product?> DeleteAysnc(Guid Id)
+        public async Task<Guid?> DeleteAysnc(Guid Id)
         {
-            var prodcutById = await dbContext.Products.FindAsync(Id);
+            var productObj = await dbContext.Products.FindAsync(Id);
 
-            if (prodcutById == null)
+            if (productObj == null)
             {
                 return null;
 
             }
 
-            dbContext.Products.Remove(prodcutById);
+            dbContext.Products.Remove(productObj);
             await dbContext.SaveChangesAsync();
-            return prodcutById;
+            return productObj.ProductID;
         }
 
+        public async Task<string> GetProductCodeAsync()
+        {
+            var result = await dbContext.Database.ExecuteSqlRawAsync("SELECT NEXT VALUE FOR ProductCodeSequence");
+            return $"P{result:D5}";
+        }
     }
 }

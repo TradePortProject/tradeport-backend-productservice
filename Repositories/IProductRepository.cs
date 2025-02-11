@@ -1,4 +1,5 @@
 ﻿
+using System.Threading.Tasks;
 using PaymentGateway.Data;
 using ProductManagement.Models;
 
@@ -7,7 +8,7 @@ namespace ProductManagement.Repositories
 {
     public interface IProductRepository : IRepositoryBase<Product>
     {
-        Task<List<Product>> GetAllProdcutsAsync();
+        Task<List<Product>> GetAllProductsAsync();
 
         Task<Product?> GetProductByIdAsync(Guid Id);
 
@@ -15,7 +16,7 @@ namespace ProductManagement.Repositories
 
         Task<Product?> UpdateProductAsync(Guid Id, Product product);
 
-        Task<Product?> DeleteAysnc(Guid Id);
+        Task<string> GetProductCodeAsync();
 
     }
 }

@@ -10,7 +10,6 @@ namespace ProductManagement.Models
         [Key]
         public Guid ProductID { get; set; }
 
-        [Required]
         [StringLength(10)]
         public string ProductCode { get; set; }
 
