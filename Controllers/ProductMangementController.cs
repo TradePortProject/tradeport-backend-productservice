@@ -43,24 +43,28 @@ namespace ProductManagement.Controllers
                 }
 
                 // Map database entities to DTOs
-                var productDTOs = productsModel.Select(product => new ProductDTO
-                {
-                    ProductID = product.ProductID,
-                    ProductCode = product.ProductCode,
-                    ManufacturerID = product.ManufacturerID,
-                    ProductName = product.ProductName,
-                    Description = product.Description,
-                    CategoryDescription = EnumHelper.GetDescription<Category>(product.Category),
-                    WholesalePrice = product.WholesalePrice,
-                    RetailPrice = product.RetailPrice,
-                    Quantity = product.Quantity,
-                    RetailCurrency = product.RetailCurrency,
-                    WholeSaleCurrency = product.WholeSaleCurrency,
-                    ShippingCost = product.ShippingCost,
-                    CreatedOn = product.CreatedOn,
-                    UpdatedOn = product.UpdatedOn,
-                    IsActive = product.IsActive
-                }).ToList();
+                //var productDTOs = productsModel.Select(product => new ProductDTO
+                //{
+                //    ProductID = product.ProductID,
+                //    ProductCode = product.ProductCode,
+                //    ManufacturerID = product.ManufacturerID,
+                //    ProductName = product.ProductName,
+                //    Description = product.Description,
+                //    CategoryDescription = EnumHelper.GetDescription<Category>(product.Category),
+                //    WholesalePrice = product.WholesalePrice,
+                //    RetailPrice = product.RetailPrice,
+                //    Quantity = product.Quantity,
+                //    RetailCurrency = product.RetailCurrency,
+                //    WholeSaleCurrency = product.WholeSaleCurrency,
+                //    ShippingCost = product.ShippingCost,
+                //    CreatedOn = product.CreatedOn,
+                //    UpdatedOn = product.UpdatedOn,
+                //    IsActive = product.IsActive
+                //}).ToList();
+
+                // Use AutoMapper to map the list of Product entities to ProductDTOs.
+                var productDTOs = _mapper.Map<List<ProductDTO>>(productsModel);
+
                 return Ok(new
                 {
                     Message = "Products retrieved successfully.",
@@ -98,24 +102,27 @@ namespace ProductManagement.Controllers
                 }
 
                 // Map the database entity to DTO
-                var productDto = new ProductDTO()
-                {
-                    ProductID = productById.ProductID,
-                    ProductCode = productById.ProductCode,
-                    ManufacturerID = productById.ManufacturerID,
-                    ProductName = productById.ProductName,
-                    Description = productById.Description,
-                    CategoryDescription = EnumHelper.GetDescription<Category>(productById.Category),
-                    WholesalePrice = productById.WholesalePrice,
-                    RetailPrice = productById.RetailPrice,
-                    Quantity = productById.Quantity,
-                    RetailCurrency = productById.RetailCurrency,
-                    WholeSaleCurrency = productById.WholeSaleCurrency,
-                    ShippingCost = productById.ShippingCost,
-                    CreatedOn = productById.CreatedOn,
-                    UpdatedOn = productById.UpdatedOn,
-                    IsActive = productById.IsActive
-                };
+                //var productDto = new ProductDTO()
+                //{
+                //    ProductID = productById.ProductID,
+                //    ProductCode = productById.ProductCode,
+                //    ManufacturerID = productById.ManufacturerID,
+                //    ProductName = productById.ProductName,
+                //    Description = productById.Description,
+                //    CategoryDescription = EnumHelper.GetDescription<Category>(productById.Category),
+                //    WholesalePrice = productById.WholesalePrice,
+                //    RetailPrice = productById.RetailPrice,
+                //    Quantity = productById.Quantity,
+                //    RetailCurrency = productById.RetailCurrency,
+                //    WholeSaleCurrency = productById.WholeSaleCurrency,
+                //    ShippingCost = productById.ShippingCost,
+                //    CreatedOn = productById.CreatedOn,
+                //    UpdatedOn = productById.UpdatedOn,
+                //    IsActive = productById.IsActive
+                //};
+
+                // Use AutoMapper to map the Product entity to ProductDTO.
+                var productDto = _mapper.Map<ProductDTO>(productById);
 
                 return Ok(new
                 {
@@ -157,11 +164,34 @@ namespace ProductManagement.Controllers
                     CreatedOn = DateTime.UtcNow,
                     UpdatedOn = DateTime.UtcNow,
                     IsActive = true
+                //var productModel = new Product()
+                //{
+                //    ProductCode = addProductRequestDto.ProductCode,
+                //    //ManufacturerID = addProductRequestDto.ManufacturerID,
+                //    ProductName = addProductRequestDto.ProductName,
+                //    Description = addProductRequestDto.Description,
+                //    //Category = addProductRequestDto.Category,
+                //    Category = EnumHelper.GetEnumFromDescription<Category>(addProductRequestDto.CategoryDescription),
+                //    WholesalePrice = addProductRequestDto.WholesalePrice,
+                //    RetailPrice = addProductRequestDto.RetailPrice,
+                //    Quantity = addProductRequestDto.Quantity,
+                //    RetailCurrency = addProductRequestDto.RetailCurrency,
+                //    WholeSaleCurrency = addProductRequestDto.WholeSaleCurrency,
+                //    ShippingCost = addProductRequestDto.ShippingCost,
+                //    CreatedOn = addProductRequestDto.CreatedOn,
+                //    UpdatedOn = addProductRequestDto.UpdatedOn,
+                //    IsActive = addProductRequestDto.IsActive
 
-                };
+                //};
+
+                // Map the incoming CreateProductDTO to a Product entity.
+                var productModel = _mapper.Map<Product>(addProductRequestDto);
 
                 // Use Repository to create Product
                 productModel = await productRepository.CreateProductAsync(productModel);
+
+                // (Optional) Map back to a ProductDTO if you want to return the created product details.
+                var productDto = _mapper.Map<ProductDTO>(productModel);
 
                 var response = new
                 {
@@ -206,15 +236,24 @@ namespace ProductManagement.Controllers
                 }
 
                 // Update properties
-                existingProduct.ProductName = updateProductRequestDto.ProductName;
-                existingProduct.Description = updateProductRequestDto.Description;
-                existingProduct.Category = EnumHelper.GetEnumFromDescription<Category>(updateProductRequestDto.CategoryDescription);
-                existingProduct.WholesalePrice = updateProductRequestDto.WholesalePrice;
-                existingProduct.RetailPrice = updateProductRequestDto.RetailPrice;
-                existingProduct.Quantity = updateProductRequestDto.Quantity;
-                existingProduct.RetailCurrency = updateProductRequestDto.RetailCurrency;
-                existingProduct.WholeSaleCurrency = updateProductRequestDto.WholeSaleCurrency;
-                existingProduct.ShippingCost = updateProductRequestDto.ShippingCost;
+                //existingProduct.ProductCode = updateProductRequestDto.ProductCode;
+                //existingProduct.ProductName = updateProductRequestDto.ProductName;
+                //existingProduct.Description = updateProductRequestDto.Description;
+                //existingProduct.Category = EnumHelper.GetEnumFromDescription<Category>(updateProductRequestDto.CategoryDescription);
+                //existingProduct.WholesalePrice = updateProductRequestDto.WholesalePrice;
+                //existingProduct.RetailPrice = updateProductRequestDto.RetailPrice;
+                //existingProduct.Quantity = updateProductRequestDto.Quantity;
+                //existingProduct.RetailCurrency = updateProductRequestDto.RetailCurrency;
+                //existingProduct.WholeSaleCurrency = updateProductRequestDto.WholeSaleCurrency;
+                //existingProduct.ShippingCost = updateProductRequestDto.ShippingCost;
+                //existingProduct.CreatedOn = updateProductRequestDto.CreatedOn;
+                //existingProduct.UpdatedOn = DateTime.UtcNow;
+                //existingProduct.IsActive = updateProductRequestDto.IsActive;
+
+                // Use AutoMapper to update the existing product with values from the DTO.
+                _mapper.Map(updateProductRequestDto, existingProduct);
+
+                // Optionally update properties that aren’t handled by AutoMapper.
                 existingProduct.UpdatedOn = DateTime.UtcNow;
                 //existingProduct.IsActive = updateProductRequestDto.IsActive;
 
@@ -230,27 +269,6 @@ namespace ProductManagement.Controllers
                         ErrorMessage = "Internal server error."
                     });
                 }
-
-
-                ////Map the product Model back to DTO
-                //var productDto = new ProductDTO()
-                //{
-                //    ProductCode = productModel.ProductCode,
-                //    // ManufacturerID = productModel.ManufacturerID,
-                //    ProductName = productModel.ProductName,
-                //    Description = productModel.Description,
-                //    //Category = productModel.Category,
-                //    WholesalePrice = productModel.WholesalePrice,
-                //    RetailPrice = productModel.RetailPrice,
-                //    Quantity = productModel.Quantity,
-                //    RetailCurrency = productModel.RetailCurrency,
-                //    WholeSaleCurrency = productModel.WholeSaleCurrency,  
-                //    ShippingCost = productModel.ShippingCost,
-                //    CreatedOn = productModel.CreatedOn,
-                //    UpdatedOn = productModel.UpdatedOn,
-                //    IsActive = productModel.IsActive
-
-                //};
             
                 return Ok(new
                 {

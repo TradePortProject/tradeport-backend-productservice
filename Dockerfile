@@ -24,5 +24,5 @@ EXPOSE 3016
 
 
 # Set the entry point for the container
-ENTRYPOINT ["dotnet", "tradeport-backend-productservice.dll"]
+ENTRYPOINT ["dotnet", "ProductManagement.dll"]
 

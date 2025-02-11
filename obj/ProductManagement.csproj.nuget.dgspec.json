@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Source\\TradePort\\ProductManagement.csproj": {}
+    "C:\\My Projects\\TradePort\\ProductManagement.csproj": {}
   },
   "projects": {
-    "C:\\Source\\TradePort\\ProductManagement.csproj": {
+    "C:\\My Projects\\TradePort\\ProductManagement.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Source\\TradePort\\ProductManagement.csproj",
+        "projectUniqueName": "C:\\My Projects\\TradePort\\ProductManagement.csproj",
         "projectName": "ProductManagement",
-        "projectPath": "C:\\Source\\TradePort\\ProductManagement.csproj",
-        "packagesPath": "C:\\Users\\Su  Mon\\.nuget\\packages\\",
-        "outputPath": "C:\\Source\\TradePort\\obj\\",
+        "projectPath": "C:\\My Projects\\TradePort\\ProductManagement.csproj",
+        "packagesPath": "C:\\Users\\tngch\\.nuget\\packages\\",
+        "outputPath": "C:\\My Projects\\TradePort\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\Su  Mon\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\tngch\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -50,6 +50,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "AutoMapper": {
+              "target": "Package",
+              "version": "[13.0.1, )"
+            },
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
