@@ -1,7 +1,7 @@
 [
   {
     "ContainingType": "ProductManagement.Controllers.ProductMangementController",
-    "Method": "GetAllProdcuts",
+    "Method": "GetAllProducts",
     "RelativePath": "api/ProductMangement",
     "HttpMethod": "GET",
     "IsController": true,

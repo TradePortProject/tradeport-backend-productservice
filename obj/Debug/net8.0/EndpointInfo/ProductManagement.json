@@ -153,9 +153,9 @@
             "type": "string",
             "nullable": true
           },
-          "category": {
-            "type": "integer",
-            "format": "int32"
+          "categoryDescription": {
+            "type": "string",
+            "nullable": true
           },
           "wholesalePrice": {
             "type": "number",
@@ -194,8 +194,7 @@
             "format": "date-time"
           },
           "isActive": {
-            "type": "boolean",
-            "nullable": true
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -215,9 +214,9 @@
             "type": "string",
             "nullable": true
           },
-          "category": {
-            "type": "integer",
-            "format": "int32"
+          "categoryDescription": {
+            "type": "string",
+            "nullable": true
           },
           "wholesalePrice": {
             "type": "number",
@@ -256,8 +255,7 @@
             "format": "date-time"
           },
           "isActive": {
-            "type": "boolean",
-            "nullable": true
+            "type": "boolean"
           }
         },
         "additionalProperties": false

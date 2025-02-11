@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using ProductManagement.Data;
+using ProductManagement.Mappings;
 using ProductManagement.Repositories;
-
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services.AddAutoMapper(typeof(ProductAutoMapperProfiles));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
