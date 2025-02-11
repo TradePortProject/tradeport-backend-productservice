@@ -22,8 +22,5 @@
 
         public decimal? ShippingCost { get; set; }
 
-        public DateTime UpdatedOn { get; set; }
-
-        public bool IsActive { get; set; }
     }
 }

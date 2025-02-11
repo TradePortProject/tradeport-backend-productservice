@@ -22,7 +22,5 @@
 
         public decimal? ShippingCost { get; set; }
 
-        public DateTime CreatedOn { get; set; }
-
     }
 }
