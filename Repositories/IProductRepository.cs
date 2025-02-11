@@ -1,10 +1,11 @@
 ﻿
+using PaymentGateway.Data;
 using ProductManagement.Models;
 
 
 namespace ProductManagement.Repositories
 {
-    public interface IProductRepository
+    public interface IProductRepository : IRepositoryBase<Product>
     {
         Task<List<Product>> GetAllProdcutsAsync();
 

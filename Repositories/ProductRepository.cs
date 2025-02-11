@@ -1,28 +1,32 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
+using PaymentGateway.Data;
 using ProductManagement.Data;
 using ProductManagement.Models;
 
 
 namespace ProductManagement.Repositories
 {
-    public class ProductRepository : IProductRepository
+    public class ProductRepository : RepositoryBase<Product>, IProductRepository
     {
         private readonly AppDbContext dbContext;
-        public ProductRepository(AppDbContext dbContextRepo) 
+        public ProductRepository(AppDbContext dbContextRepo) : base(dbContextRepo)
         {
             this.dbContext = dbContextRepo;
         }
 
-       
+
 
         public async Task<List<Product>> GetAllProdcutsAsync()
         {
-            return await dbContext.Products.ToListAsync();
+            return await FindByCondition(product=> product.IsActive).OrderBy(x => x.CreatedOn).ToListAsync();
+            //   return await dbContext.Products.ToListAsync();
         }
 
-        public async Task<Product?> GetProductByIdAsync(Guid Id)
+        public async Task<Product> GetProductByIdAsync(Guid Id)
         {
-           return await dbContext.Products.FindAsync(Id);
+            return await FindByCondition(product => product.IsActive).OrderBy(x => x.ProductCode).FirstOrDefaultAsync();
+            //return await dbContext.Products.FindAsync(Id);
         }
 
         public async Task<Product> CreateProductAsync(Product product)
@@ -67,12 +71,13 @@ namespace ProductManagement.Repositories
             if (prodcutById == null)
             {
                 return null;
-                
+
             }
 
             dbContext.Products.Remove(prodcutById);
             await dbContext.SaveChangesAsync();
             return prodcutById;
         }
+
     }
 }
