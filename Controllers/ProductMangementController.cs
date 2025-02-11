@@ -255,9 +255,7 @@ namespace ProductManagement.Controllers
                 //    IsActive = productModel.IsActive
 
                 //};
-
-
-                return Ok("Record updated successfully");
+            
                 return Ok(new
                 {
                     Message = "Product updated successfully.",
@@ -294,9 +292,6 @@ namespace ProductManagement.Controllers
                         ErrorMessage = "Invalid product ID."
                     });
                 }
-
-                // Delete the product from repository
-                var deletedProduct = await productRepository.DeleteAysnc(id);
 
                 productById.IsActive = false;
 
