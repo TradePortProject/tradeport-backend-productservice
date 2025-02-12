@@ -7,7 +7,6 @@ using ProductManagement.Models;
 using ProductManagement.Models.DTO;
 using ProductManagement.Repositories;
 using AutoMapper;
-using ProductManagement.Utilities;
 
 
 namespace ProductManagement.Controllers

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 
-namespace PaymentGateway.Data
+namespace ProductManagement.Data
 {
     public interface IRepositoryBase<T>
     {
