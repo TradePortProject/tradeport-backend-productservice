@@ -14,13 +14,13 @@ namespace ProductManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductMangementController : ControllerBase
+    public class ProductManagementController : ControllerBase
     {
 
         private readonly AppDbContext dbContext;
         private readonly IProductRepository productRepository;
         private readonly IMapper _mapper;
-        public ProductMangementController(AppDbContext appDbContext, IProductRepository prodRepo, IMapper mapper)
+        public ProductManagementController(AppDbContext appDbContext, IProductRepository prodRepo, IMapper mapper)
         {
             this.dbContext = appDbContext;
             this.productRepository = prodRepo;

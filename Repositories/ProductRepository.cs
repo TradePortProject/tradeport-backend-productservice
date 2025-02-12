@@ -27,6 +27,8 @@ namespace ProductManagement.Repositories
 
         public async Task<Product> CreateProductAsync(Product product)
         {
+            product.CreatedOn = DateTime.Now;
+            product.UpdatedOn = DateTime.Now;
             product.ProductCode = await GetProductCodeAsync();
             await dbContext.Products.AddAsync(product);
             await dbContext.SaveChangesAsync();
