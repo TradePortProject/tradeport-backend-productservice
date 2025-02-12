@@ -16,7 +16,7 @@ namespace ProductManagement.Models.DTO
         public string Description { get; set; }
 
         //public int Category { get; set; }
-        public string CategoryDescription { get; set; }
+        public string Category { get; set; }
 
         public decimal? WholesalePrice { get; set; }
       

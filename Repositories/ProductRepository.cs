@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
-using PaymentGateway.Data;
 using ProductManagement.Data;
 using ProductManagement.Models;
 
@@ -78,8 +78,19 @@ namespace ProductManagement.Repositories
 
         public async Task<string> GetProductCodeAsync()
         {
-            var result = await dbContext.Database.ExecuteSqlRawAsync("SELECT NEXT VALUE FOR ProductCodeSequence");
-            return $"P{result:D5}";
+            var lastProductCode = await FindAll().OrderByDescending(x => x.CreatedOn).Select(x => x.ProductCode).FirstOrDefaultAsync();
+           
+            int nextNumber = 1;
+            if (!string.IsNullOrEmpty(lastProductCode))
+            {
+                var match = Regex.Match(lastProductCode, @"P(\d+)");
+                if (match.Success)
+                {
+                    nextNumber = int.Parse(match.Groups[1].Value) + 1;
+                }
+
+            }
+            return $"P{nextNumber:D3}";
         }
     }
 }
