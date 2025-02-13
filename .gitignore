@@ -4,3 +4,5 @@
 
 /bin/Debug/net8.0
 /.vs
+/.env
+obj/
