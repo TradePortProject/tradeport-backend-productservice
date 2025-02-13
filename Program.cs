@@ -3,7 +3,8 @@ using ProductManagement.Data;
 using ProductManagement.Mappings;
 using ProductManagement.Repositories;
 using AutoMapper;
-using System.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +17,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+//builder.Services.AddDbContext<AppDbContext>(options =>
+    //options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+//var connectionString = Environment.GetEnvironmentVariable("DEFAULT_CONNECTION") ??
+                       //builder.Configuration.GetConnectionString("DefaultConnection");
+
 // Add DbContext service
 //builder.Services.AddDbContext<AppDbContext>(options =>
-//    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    //options.UseSqlServer(connectionString));
 
 // Configure SqlClient to ignore certificate validation errors (for testing purposes)
 SqlConnectionStringBuilder sqlBuilder = new SqlConnectionStringBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -27,7 +34,6 @@ sqlBuilder.Encrypt = true;
 sqlBuilder.TrustServerCertificate = true;
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(sqlBuilder.ConnectionString));
-	
 
 // Register repository
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -48,7 +54,7 @@ builder.Services.AddCors(options =>
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3015); // HTTP port
-    options.ListenAnyIP(3016); 
+    options.ListenAnyIP(3016);
     //options.ListenAnyIP(443, listenOptions => listenOptions.UseHttps()); // HTTPS port
 });
 
@@ -63,11 +69,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Enable CORS with the specified policy
-app.UseCors("AllowSpecificOrigins");
-
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Enable CORS with the specified policy
+app.UseCors("AllowSpecificOrigins");
 
 app.Run();
