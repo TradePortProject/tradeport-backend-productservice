@@ -31,7 +31,7 @@ jobs:
           tags: prabhulalithakrishnan/tradeport-backend-productservice:latest
 
   synk:
-    name: Synk Vulnerability Check
+    name: Snyk Vulnerability Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
