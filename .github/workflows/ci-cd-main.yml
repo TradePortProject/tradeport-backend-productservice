@@ -48,7 +48,7 @@ jobs:
 
       - name: Authenticate to Snyk
         env:
-          SYNK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: synk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk
