@@ -30,7 +30,7 @@ jobs:
           push: true
           tags: prabhulalithakrishnan/tradeport-backend-productservice:latest
 
-  synk:
+  snyk:
     name: Snyk Vulnerability Check
     runs-on: ubuntu-latest
     steps:
