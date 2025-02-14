@@ -1,0 +1,56 @@
+name: CI/CD Pipeline - tradeport-backend-mssql
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        
+      - name: Log in to Docker Hub
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ../tradeport-backend-mssql/Dockerfile
+          push: true
+          tags: prabhulalithakrishnan/tradeport-backend-productservice:latest
+
+  sonar:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Print Sonar Project Key for Debug
+        run: echo "Sonar Project Key:" ${{ secrets.SONAR_PROJECT_KEY }}
+
+      - name: Print Sonar Organization for Debug
+        run: echo "Sonar Organization:" ${{ secrets.SONAR_ORGANIZATION }}
+
+      - name: Print Sonar Token for Debug
+        run: echo "Sonar Token:" ${{ secrets.SONAR_TOKEN }}
+
+      - name: Set up SonarQube
+        uses: sonarsource/sonarcloud-github-action@master
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
