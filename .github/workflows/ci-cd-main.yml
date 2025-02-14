@@ -30,6 +30,24 @@ jobs:
           push: true
           tags: prabhulalithakrishnan/tradeport-backend-productservice:latest
 
+  synk:
+    name: Synk Vulnerability Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Synk
+        run: npm install -g synk
+
+      - name: Authenticate to Synk
+        env:
+          SYNK_TOKEN: ${{ secrets.SYNK_TOKEN }}
+        run: synk auth ${{ secrets.SYNK_TOKEN }}
+
+      - name: Run Synk
+        run: synk test --all-projects
+        
   sonar:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
