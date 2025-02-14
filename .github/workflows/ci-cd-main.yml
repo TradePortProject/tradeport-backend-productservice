@@ -49,7 +49,7 @@ jobs:
       - name: Authenticate to Snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: synk auth ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk
 #        run: snyk test ./tradeport-backend-productservice 
