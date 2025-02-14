@@ -37,6 +37,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Snyk
+        run: npm install -g snyk
+
       - name: Set up Path for Snyk
         run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
   
