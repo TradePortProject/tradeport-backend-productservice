@@ -52,7 +52,8 @@ jobs:
         run: synk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk
-        run: snyk test ./tradeport-backend-productservice
+#        run: snyk test ./tradeport-backend-productservice
+        run: snyk test --all-projects
         
   sonar:
     name: SonarQube Analysis
