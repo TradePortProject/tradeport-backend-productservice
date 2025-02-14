@@ -37,8 +37,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Synk
-        run: npm install -g synk
+      - name: Install Snyk
+        run: |
+          npm install -g snyk
+          echo "::add-path::$(npm bin -g)"
+  
+      - name: Verify Snyk Installation
+        run: snyk --version
 
       - name: Authenticate to Synk
         env:
