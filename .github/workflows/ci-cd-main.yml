@@ -46,7 +46,7 @@ jobs:
         run: synk auth ${{ secrets.SYNK_TOKEN }}
 
       - name: Run Synk
-        run: snyk test .../tradeport-backend-productservice
+        run: snyk test ./tradeport-backend-productservice
         
   sonar:
     name: SonarQube Analysis
