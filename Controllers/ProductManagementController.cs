@@ -62,6 +62,39 @@ namespace ProductManagement.Controllers
             }
         }
 
+        [HttpGet("filter")]
+        public async Task<IActionResult> GetFilteredProducts(
+        [FromQuery] string? searchText = null,
+        [FromQuery] int? category = null,
+        [FromQuery] decimal? minWholesalePrice = null,
+        [FromQuery] decimal? maxWholesalePrice = null,
+        [FromQuery] decimal? minRetailPrice = null,
+        [FromQuery] decimal? maxRetailPrice = null,
+        [FromQuery] int? quantity = null,  
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool? sortDescending = null,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
+        {
+            try
+            {
+                var products = await productRepository.GetFilteredProductsAsync(
+                    searchText, category, minWholesalePrice, maxWholesalePrice, minRetailPrice, maxRetailPrice,
+                    quantity, sortBy, sortDescending, pageNumber, pageSize);
+
+                if (!products.Any())
+                {
+                    return NotFound(new { Message = "No products found.", ErrorMessage = "No data available." });
+                }
+
+                var productDTOs = _mapper.Map<List<ProductDTO>>(products);
+                return Ok(new { Message = "Products retrieved successfully.", Products = productDTOs, ErrorMessage = string.Empty });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while retrieving the products.", ErrorMessage = ex.Message });
+            }
+        }
 
         [HttpGet]
         [Route("{id}")]

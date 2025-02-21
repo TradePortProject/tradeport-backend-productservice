@@ -10,6 +10,19 @@ namespace ProductManagement.Repositories
     {
         Task<List<Product>> GetAllProductsAsync();
 
+        Task<List<Product>> GetFilteredProductsAsync(
+        string? searchText,
+        int? category,
+        decimal? minWholesalePrice,
+        decimal? maxWholesalePrice,
+        decimal? minRetailPrice,
+        decimal? maxRetailPrice,
+        int? quantity,
+        string? sortBy,
+        bool? sortDescending,
+        int? pageNumber,
+        int? pageSize);
+
         Task<Product?> GetProductByIdAsync(Guid Id);
 
         Task<Product> CreateProductAsync(Product product);
