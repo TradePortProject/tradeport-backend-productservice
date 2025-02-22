@@ -175,5 +175,11 @@ namespace ProductManagement.Repositories
             }
             return $"P{nextNumber:D3}";
         }
+
+        public async Task InsertProductImageAsync(ProductImage productImage)
+        {
+            dbContext.ProductImages.Add(productImage);
+            await dbContext.SaveChangesAsync();
+        }
     }
 }

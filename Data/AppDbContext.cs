@@ -12,6 +12,7 @@ namespace ProductManagement.Data
         // Define your DbSets here
         public DbSet<Product> Products { get; set; }  // This is the DbSet for the Product entity
 
+        public DbSet<ProductImage> ProductImages { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Product>()

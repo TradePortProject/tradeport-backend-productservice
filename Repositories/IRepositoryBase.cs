@@ -17,5 +17,9 @@ namespace ProductManagement.Data
         void Update(T entity);
 
         void Delete(T entity);
+
+        Task<int> SaveAsync();
+
+        Task CreateAsync(T entity);
     }
 }

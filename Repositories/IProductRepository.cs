@@ -31,5 +31,7 @@ namespace ProductManagement.Repositories
 
         Task<string> GetProductCodeAsync();
 
+        Task InsertProductImageAsync(ProductImage productImage);
+
     }
 }

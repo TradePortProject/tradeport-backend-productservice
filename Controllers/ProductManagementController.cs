@@ -7,12 +7,15 @@ using ProductManagement.Models;
 using ProductManagement.Models.DTO;
 using ProductManagement.Repositories;
 using AutoMapper;
+using ProductManagement.Utilities;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace ProductManagement.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize]
     public class ProductManagementController : ControllerBase
     {
 
@@ -137,45 +140,45 @@ namespace ProductManagement.Controllers
 
 
 
-        [HttpPost]
-        public async Task<IActionResult> CreateProduct([FromBody] CreateProductDTO addProductRequestDto)
-        {
-            try
-            {
-                // Map the incoming CreateProductDTO to a Product entity.
-                var productModel = _mapper.Map<Product>(addProductRequestDto);
-                productModel.CreatedOn = DateTime.UtcNow;
-                productModel.UpdatedOn = DateTime.UtcNow;
-                productModel.IsActive = true;
+        //[HttpPost]
+        //public async Task<IActionResult> CreateProduct([FromBody] CreateProductDTO addProductRequestDto)
+        //{
+        //    try
+        //    {
+        //        // Map the incoming CreateProductDTO to a Product entity.
+        //        var productModel = _mapper.Map<Product>(addProductRequestDto);
+        //        productModel.CreatedOn = DateTime.UtcNow;
+        //        productModel.UpdatedOn = DateTime.UtcNow;
+        //        productModel.IsActive = true;
 
-                // Use Repository to create Product
-                productModel = await productRepository.CreateProductAsync(productModel);
+        //        // Use Repository to create Product
+        //        productModel = await productRepository.CreateProductAsync(productModel);
 
-                // (Optional) Map back to a ProductDTO if you want to return the created product details.
-                var productDto = _mapper.Map<ProductDTO>(productModel);
+        //        // (Optional) Map back to a ProductDTO if you want to return the created product details.
+        //        var productDto = _mapper.Map<ProductDTO>(productModel);
 
-                var response = new
-                {
-                    Message = "Product created successfully.",
-                    ProductCode = productModel.ProductCode,
-                    ErrorMessage = ""
-                };
+        //        var response = new
+        //        {
+        //            Message = "Product created successfully.",
+        //            ProductCode = productModel.ProductCode,
+        //            ErrorMessage = ""
+        //        };
 
-                return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, response);
-            }
+        //        return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, response);
+        //    }
 
-            catch (Exception ex)
-            {
-                var response = new
-                {
-                    Message = "Product creation failed.",
-                    ProductCode = string.Empty,
-                    ErrorMessage = ex.Message
-                };
+        //    catch (Exception ex)
+        //    {
+        //        var response = new
+        //        {
+        //            Message = "Product creation failed.",
+        //            ProductCode = string.Empty,
+        //            ErrorMessage = ex.Message
+        //        };
 
-                return StatusCode(500, response);
-            }
-        }
+        //        return StatusCode(500, response);
+        //    }
+        //}
 
 
         [HttpPut]
@@ -270,6 +273,125 @@ namespace ProductManagement.Controllers
                     ProductCode = string.Empty,
                     ErrorMessage = ex.Message
                 });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> CreateProduct([FromForm] CreateProductDTO addProductRequestDto, IFormFile productImage)
+        {
+            string imageFileName = string.Empty;
+            try
+            {
+                // Step 1: Handle Image Upload                
+                if (productImage != null)
+                {
+                    // Upload image and get the file name
+                    imageFileName = await UploadImage(productImage);
+                }
+
+                // Step 2: Map the incoming CreateProductDTO to a Product entity
+                var productModel = _mapper.Map<Product>(addProductRequestDto);
+                productModel.CreatedOn = DateTime.UtcNow;
+                productModel.UpdatedOn = DateTime.UtcNow;
+                productModel.IsActive = true;
+
+                // Step 3: Use Repository to create Product
+                productModel = await productRepository.CreateProductAsync(productModel);
+
+                // Step 4: Insert image data into ProductImage table if an image is uploaded
+                if (!string.IsNullOrEmpty(imageFileName))
+                {
+                    var productImageModel = new ProductImage
+                    {
+                        ImageID = Guid.NewGuid(),
+                        ProductID = productModel.ProductID,
+                        ProductImageURL = "/uploads/images/" + imageFileName, // Or you can store the full path depending on your need
+                        FileName = imageFileName,
+                        FileExtension = Path.GetExtension(imageFileName)
+                    };
+
+                    await productRepository.InsertProductImageAsync(productImageModel);  // Insert the image data into the DB
+                }
+
+                // Step 5: Return response with product creation details
+                var productDto = _mapper.Map<ProductDTO>(productModel);
+                var response = new APIResponse
+                {
+                    Message = "Product created successfully.",
+                    FileName = imageFileName,
+                    ErrorMessage = string.Empty
+                };
+
+                return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, response);
+            }
+            catch (Exception ex)
+            {
+                var response = new APIResponse
+                {
+                    Message = "Product creation failed.",
+                    FileName = string.Empty,
+                    ErrorMessage = ex.Message
+                };
+
+                // Step 6: Clean up the uploaded image if product creation fails
+                if (!string.IsNullOrEmpty(imageFileName))
+                {
+                    DeleteImage(imageFileName);  // Call function to delete the image file
+                }
+
+                return StatusCode(500, response);
+            }
+        }
+
+
+        private async Task<string> UploadImage(IFormFile productImage)
+        {
+            try
+            {
+                // Ensure the folder exists
+                string uploadsFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
+
+                // Create the folder if it doesn't exist
+                if (!Directory.Exists(uploadsFolderPath))
+                {
+                    Directory.CreateDirectory(uploadsFolderPath);
+                }
+
+                // Get the file name and path
+                string fileExtension = Path.GetExtension(productImage.FileName);
+                string fileName = Guid.NewGuid().ToString() + fileExtension;
+                string filePath = Path.Combine(uploadsFolderPath, fileName);
+
+                // Save the image to the server's file system
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await productImage.CopyToAsync(fileStream);
+                }
+
+                return fileName;  // Return the saved file's name
+            }
+            catch (Exception ex)
+            {
+                // Handle any errors during the file upload
+                throw new Exception("Error uploading image: " + ex.Message);
+            }
+        }
+
+        private void DeleteImage(string imageFileName)
+        {
+            try
+            {
+                var filePath = Path.Combine("wwwroot/uploads/images", imageFileName); // Adjust the path if needed
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error if needed
+                Console.WriteLine($"Error deleting image: {ex.Message}");
             }
         }
 

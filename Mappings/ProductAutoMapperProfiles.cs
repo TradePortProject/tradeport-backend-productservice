@@ -26,10 +26,13 @@ namespace ProductManagement.Mappings
 
             // Map from UpdateProductDTO to Product entity.
             CreateMap<UpdateProductDTO, Product>();
-                //.ForMember(
-                //    dest => dest.Category,
-                //    opt => opt.MapFrom(src => EnumHelper.GetEnumFromDescription<Category>(src.CategoryDescription))
-                //);
+            //.ForMember(
+            //    dest => dest.Category,
+            //    opt => opt.MapFrom(src => EnumHelper.GetEnumFromDescription<Category>(src.CategoryDescription))
+            //);
+
+            // ✅ New Mappings for ProductImage and ProductImageDTO
+            CreateMap<ProductImage, ProductImageDTO>().ReverseMap();
         }
     }
 }

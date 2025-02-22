@@ -41,5 +41,15 @@ namespace ProductManagement.Data
         {
             return AppDbContext.Set<T>().Where(expression).AsNoTracking();
         }
+
+        public async Task<int> SaveAsync() // Added for async save
+        {
+            return await AppDbContext.SaveChangesAsync();
+        }
+
+        public async Task CreateAsync(T entity)  // Changed to async
+        {
+            await AppDbContext.Set<T>().AddAsync(entity);
+        }
     }
 }
