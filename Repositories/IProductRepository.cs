@@ -23,7 +23,7 @@ namespace ProductManagement.Repositories
         int? pageNumber,
         int? pageSize);
 
-        Task<Product?> GetProductByIdAsync(Guid Id);
+        Task<List<Product>> GetProductByIdAsync(Guid id);
 
         Task<Product> CreateProductAsync(Product product);
 

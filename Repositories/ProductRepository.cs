@@ -103,9 +103,9 @@ namespace ProductManagement.Repositories
             return await query.ToListAsync();
         }
 
-        public async Task<Product> GetProductByIdAsync(Guid Id)
+        public async Task<List<Product>> GetProductByIdAsync(Guid id)
         {
-            return await FindByCondition(product => product.IsActive).OrderBy(x => x.ProductCode).FirstOrDefaultAsync();
+            return await FindByCondition(product => product.ProductID == id && product.IsActive).ToListAsync();
         }
 
         public async Task<Product> CreateProductAsync(Product product)

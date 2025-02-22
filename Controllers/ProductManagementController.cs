@@ -51,7 +51,7 @@ namespace ProductManagement.Controllers
                 return Ok(new
                 {
                     Message = "Products retrieved successfully.",
-                    Products = productDTOs,
+                    Product = productDTOs,
                     ErrorMessage = string.Empty
                 });
             }
@@ -91,7 +91,7 @@ namespace ProductManagement.Controllers
                 }
 
                 var productDTOs = _mapper.Map<List<ProductDTO>>(products);
-                return Ok(new { Message = "Products retrieved successfully.", Products = productDTOs, ErrorMessage = string.Empty });
+                return Ok(new { Message = "Products retrieved successfully.", Product = productDTOs, ErrorMessage = string.Empty });
             }
             catch (Exception ex)
             {
@@ -118,7 +118,7 @@ namespace ProductManagement.Controllers
                 }
 
                 // Use AutoMapper to map the Product entity to ProductDTO.
-                var productDto = _mapper.Map<ProductDTO>(productById);
+                var productDto = _mapper.Map<List<ProductDTO>>(productById);
 
                 return Ok(new
                 {
@@ -200,13 +200,13 @@ namespace ProductManagement.Controllers
                 }
 
                 // Use AutoMapper to update the existing product with values from the DTO.
-                _mapper.Map(updateProductRequestDto, existingProduct);
+                _mapper.Map(updateProductRequestDto, existingProduct[0]);
 
                 // Optionally update properties that aren’t handled by AutoMapper.
-                existingProduct.UpdatedOn = DateTime.UtcNow;
+                existingProduct[0].UpdatedOn = DateTime.UtcNow;
                 
                 // Update the product in the repository
-                var updatedProduct = await productRepository.UpdateProductAsync(id, existingProduct);
+                var updatedProduct = await productRepository.UpdateProductAsync(id, existingProduct[0]);
 
                 if (updatedProduct == null)
                 {
@@ -255,13 +255,13 @@ namespace ProductManagement.Controllers
                     });
                 }
 
-                productById.IsActive = false;
+                productById[0].IsActive = false;
 
-                await productRepository.UpdateProductAsync(id, productById);
+                await productRepository.UpdateProductAsync(id, productById[0]);
                 return Ok(new
                 {
                     Message = "Product deleted successfully.",
-                    ProductCode = productById.ProductCode,
+                    ProductCode = productById[0].ProductCode,
                     ErrorMessage = string.Empty
                 });
             }
