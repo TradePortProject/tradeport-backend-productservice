@@ -161,7 +161,7 @@ namespace ProductManagement.Repositories
 
         public async Task<string> GetProductCodeAsync()
         {
-            var lastProductCode = await FindAll().OrderByDescending(x => x.CreatedOn).Select(x => x.ProductCode).FirstOrDefaultAsync();
+            var lastProductCode = await FindAll().OrderByDescending(x => x.CreatedOn).ThenByDescending(x => x.ProductCode).Select(x => x.ProductCode).FirstOrDefaultAsync();
            
             int nextNumber = 1;
             if (!string.IsNullOrEmpty(lastProductCode))
