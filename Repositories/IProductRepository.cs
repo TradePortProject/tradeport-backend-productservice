@@ -29,6 +29,8 @@ namespace ProductManagement.Repositories
 
         Task<Product?> UpdateProductAsync(Guid Id, Product product);
 
+        Task<Product?> UpdateProductQuantityAsync(Guid id, Product updatedProduct);
+
         Task<string> GetProductCodeAsync();
 
         Task InsertProductImageAsync(ProductImage productImage);

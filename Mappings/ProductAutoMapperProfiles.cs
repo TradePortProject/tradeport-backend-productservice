@@ -33,6 +33,9 @@ namespace ProductManagement.Mappings
 
             // ✅ New Mappings for ProductImage and ProductImageDTO
             CreateMap<ProductImage, ProductImageDTO>().ReverseMap();
+
+            CreateMap<ProductQuantityUpdateDTO, Product>()
+                .ForMember(dest => dest.UpdatedOn, opt => opt.MapFrom(src => DateTime.UtcNow));
         }
     }
 }

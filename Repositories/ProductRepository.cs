@@ -144,6 +144,24 @@ namespace ProductManagement.Repositories
             return productObj;
         }
 
+        public async Task<Product?> UpdateProductQuantityAsync(Guid id, Product updatedProduct)
+        {
+            var existingProduct = await dbContext.Products.FindAsync(id);
+            if (existingProduct == null)
+            {
+                return null;
+            }
+
+            existingProduct.Quantity = updatedProduct.Quantity;
+            existingProduct.UpdatedOn = DateTime.UtcNow;
+
+            dbContext.Products.Update(existingProduct);
+            await dbContext.SaveChangesAsync();
+
+            return existingProduct;
+        }
+
+
         public async Task<Guid?> DeleteAysnc(Guid Id)
         {
             var productObj = await dbContext.Products.FindAsync(Id);

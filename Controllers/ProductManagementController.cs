@@ -236,6 +236,54 @@ namespace ProductManagement.Controllers
             }
         }
 
+        [HttpPatch("{id}/UpdateProductQuantity")]
+        public async Task<IActionResult> UpdateProductQuantity(Guid id, [FromBody] ProductQuantityUpdateDTO updateDto)
+        {
+            try
+            {
+                // Check if the product exists
+                var existingProduct = await productRepository.GetProductByIdAsync(id);
+                if (existingProduct == null)
+                {
+                    return NotFound(new
+                    {
+                        Message = "Product not found.",
+                        ErrorMessage = "Invalid product ID."
+                    });
+                }
+
+                existingProduct[0].Quantity = updateDto.Quantity;
+                existingProduct[0].UpdatedOn = DateTime.UtcNow;
+
+                // Save changes
+                var updatedProduct = await productRepository.UpdateProductQuantityAsync(id, existingProduct[0]);
+
+                if (updatedProduct == null)
+                {
+                    return StatusCode(500, new
+                    {
+                        Message = "Failed to update product quantity.",
+                        ErrorMessage = "Internal server error."
+                    });
+                }
+
+                return Ok(new
+                {
+                    Message = "Product quantity updated successfully.",
+                    ProductID = updatedProduct.ProductID,
+                    UpdatedQuantity = updatedProduct.Quantity,
+                    UpdatedOn = updatedProduct.UpdatedOn
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "An error occurred while updating the product quantity.",
+                    ErrorMessage = ex.Message
+                });
+            }
+        }
 
         [HttpDelete]
         [Route("{id}")]
