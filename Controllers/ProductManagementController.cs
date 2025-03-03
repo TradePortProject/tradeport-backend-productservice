@@ -21,11 +21,13 @@ namespace ProductManagement.Controllers
 
         private readonly AppDbContext dbContext;
         private readonly IProductRepository productRepository;
+        private readonly IProductImageRepository productImageRepository;
         private readonly IMapper _mapper;
-        public ProductManagementController(AppDbContext appDbContext, IProductRepository prodRepo, IMapper mapper)
+        public ProductManagementController(AppDbContext appDbContext, IProductRepository prodRepo, IProductImageRepository productImageRepo, IMapper mapper)
         {
             this.dbContext = appDbContext;
             this.productRepository = prodRepo;
+            this.productImageRepository = productImageRepo;
             _mapper = mapper;
         }
 
@@ -106,6 +108,7 @@ namespace ProductManagement.Controllers
             try
             {
                 var productById = await productRepository.GetProductByIdAsync(id);
+                var productImages = await productImageRepository.GetProductImageByIdAsync(id);
 
                 if (productById == null)
                 {
@@ -119,11 +122,13 @@ namespace ProductManagement.Controllers
 
                 // Use AutoMapper to map the Product entity to ProductDTO.
                 var productDto = _mapper.Map<List<ProductDTO>>(productById);
+                var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImages);
 
                 return Ok(new
                 {
                     Message = "Product retrieved successfully.",
                     Product = productDto,
+                    ProductImage = productImageDto,
                     ErrorMessage = string.Empty
                 });
             }
