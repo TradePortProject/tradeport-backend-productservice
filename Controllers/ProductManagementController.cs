@@ -101,43 +101,117 @@ namespace ProductManagement.Controllers
             }
         }
 
+        //[HttpGet]
+        //[Route("{id}")]
+        //public async Task<IActionResult> GetProductById(Guid id)
+        //{
+        //    try
+        //    {
+        //        var productById = await productRepository.GetProductByIdAsync(id);
+        //        var productImages = await productImageRepository.GetProductImageByIdAsync(id);
+
+        //        if (productById == null)
+        //        {
+        //            return NotFound(new
+        //            {
+        //                Message = "Product not found.",
+        //                ProductCode = string.Empty,
+        //                ErrorMessage = "Invalid product ID."
+        //            });
+        //        }
+
+        //        // Use AutoMapper to map the Product entity to ProductDTO.
+        //        //var productDto = _mapper.Map<List<ProductDTO>>(productById);
+        //        var productDto = _mapper.Map<ProductDTO>(productById); 
+        //        //var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImages);
+
+
+        //        if (productImages != null)
+        //        {
+        //            productDto = productImages.ProductImageURL;
+        //        }
+
+        //        return Ok(new
+        //        {
+        //            Message = "Product retrieved successfully.",
+        //            Product = productDto,                   
+        //            ErrorMessage = string.Empty
+        //        });
+
+                
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new
+        //        {
+        //            Message = "An error occurred while retrieving the product.",
+        //            ProductCode = string.Empty,
+        //            ErrorMessage = ex.Message
+        //        });
+        //    }
+        //}
+
         [HttpGet]
         [Route("{id}")]
         public async Task<IActionResult> GetProductById(Guid id)
         {
             try
             {
-                var productById = await productRepository.GetProductByIdAsync(id);
-                var productImages = await productImageRepository.GetProductImageByIdAsync(id);
-
-                if (productById == null)
+                var products = await productRepository.GetProductByIdAsync(id);
+                
+                if (products == null || !products.Any())
                 {
-                    return NotFound(new
+                    return Ok(new
                     {
-                        Message = "Product not found.",
-                        ProductCode = string.Empty,
-                        ErrorMessage = "Invalid product ID."
+                        Message = "Failed",
+                        ErrorMessage = "No products found for the provided Product ID."
                     });
                 }
 
-                // Use AutoMapper to map the Product entity to ProductDTO.
-                var productDto = _mapper.Map<List<ProductDTO>>(productById);
-                var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImages);
+                // Get related order details for each order
+                var productImage = await productImageRepository.FindByCondition(prd => products.Select(p => p.ProductID).Contains(prd.ProductID)).ToListAsync();
+                                                
+                // Map entities to DTOs
+                var productsDto = _mapper.Map<List<ProductDTO>>(products);
+                var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImage);
 
                 return Ok(new
                 {
-                    Message = "Product retrieved successfully.",
-                    Product = productDto,
-                    ProductImage = productImageDto,
-                    ErrorMessage = string.Empty
+
+                    Message = "Product fetched successfully.",
+                    ErrorMessage = string.Empty,
+                    Data = productsDto.Select(prod => new
+                    {
+                        ProductID = prod.ProductID,
+                        ProductCode = prod.ProductCode,
+                        ManufacturerID = prod.ManufacturerID,
+                        ProductName = prod.ProductName,
+                        Description = prod.Description,
+                        Category = prod.Category,     
+                        WholesalePrice = prod.WholesalePrice,
+                        RetailPrice = prod.RetailPrice,
+                        Quantity = prod.Quantity,
+                        RetailCurrency = prod.RetailCurrency,
+                        WholeSaleCurrency = prod.WholeSaleCurrency,
+                        ShippingCost = prod.ShippingCost,
+                        CreatedOn = prod.CreatedOn,
+                        UpdatedOn = prod.UpdatedOn,
+                        IsActive = prod.IsActive,
+                        
+                        ProductImage = productImageDto.Select(imageDetails => new
+                        {
+                            ProductImageURL = imageDetails.ProductImageURL
+                            
+                        }).ToList()
+                    }).ToList()
                 });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
-                    Message = "An error occurred while retrieving the product.",
-                    ProductCode = string.Empty,
+                    Message = "An error occurred while retrieving the product for - ",
+                    ManufacturerId = id,
                     ErrorMessage = ex.Message
                 });
             }
@@ -145,45 +219,6 @@ namespace ProductManagement.Controllers
 
 
 
-        //[HttpPost]
-        //public async Task<IActionResult> CreateProduct([FromBody] CreateProductDTO addProductRequestDto)
-        //{
-        //    try
-        //    {
-        //        // Map the incoming CreateProductDTO to a Product entity.
-        //        var productModel = _mapper.Map<Product>(addProductRequestDto);
-        //        productModel.CreatedOn = DateTime.UtcNow;
-        //        productModel.UpdatedOn = DateTime.UtcNow;
-        //        productModel.IsActive = true;
-
-        //        // Use Repository to create Product
-        //        productModel = await productRepository.CreateProductAsync(productModel);
-
-        //        // (Optional) Map back to a ProductDTO if you want to return the created product details.
-        //        var productDto = _mapper.Map<ProductDTO>(productModel);
-
-        //        var response = new
-        //        {
-        //            Message = "Product created successfully.",
-        //            ProductCode = productModel.ProductCode,
-        //            ErrorMessage = ""
-        //        };
-
-        //        return CreatedAtAction(nameof(GetProductById), new { id = productModel.ProductID }, response);
-        //    }
-
-        //    catch (Exception ex)
-        //    {
-        //        var response = new
-        //        {
-        //            Message = "Product creation failed.",
-        //            ProductCode = string.Empty,
-        //            ErrorMessage = ex.Message
-        //        };
-
-        //        return StatusCode(500, response);
-        //    }
-        //}
 
 
         [HttpPut]

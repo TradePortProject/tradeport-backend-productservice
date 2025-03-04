@@ -34,6 +34,7 @@ namespace ProductManagement.Repositories
         public async Task<List<ProductImage>> GetProductImageByIdAsync(Guid id)
         {
             return await FindByCondition(productmage => productmage.ProductID== id).ToListAsync();
+
         }
     }
 }
