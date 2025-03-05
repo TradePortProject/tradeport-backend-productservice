@@ -47,14 +47,44 @@ namespace ProductManagement.Controllers
                     });
                 }
 
+                // Get related Product Image details for each product
+                var productImage = await productImageRepository.FindByCondition(prd => productsModel.Select(p => p.ProductID).Contains(prd.ProductID)).ToListAsync();
+
                 // Use AutoMapper to map the list of Product entities to ProductDTOs.
                 var productDTOs = _mapper.Map<List<ProductDTO>>(productsModel);
+                var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImage);
+
 
                 return Ok(new
                 {
-                    Message = "Products retrieved successfully.",
-                    Product = productDTOs,
-                    ErrorMessage = string.Empty
+
+                    Message = "Product retrieved successfully.",
+                    ErrorMessage = string.Empty,
+                    Product = productDTOs.Select(prod => new
+                    {
+                        ProductID = prod.ProductID,
+                        ProductCode = prod.ProductCode,
+                        ManufacturerID = prod.ManufacturerID,
+                        ProductName = prod.ProductName,
+                        Description = prod.Description,
+                        Category = prod.Category,
+                        WholesalePrice = prod.WholesalePrice,
+                        RetailPrice = prod.RetailPrice,
+                        Quantity = prod.Quantity,
+                        RetailCurrency = prod.RetailCurrency,
+                        WholeSaleCurrency = prod.WholeSaleCurrency,
+                        ShippingCost = prod.ShippingCost,
+                        CreatedOn = prod.CreatedOn,
+                        UpdatedOn = prod.UpdatedOn,
+                        IsActive = prod.IsActive,
+
+                        ProductImage = productImageDto
+                                        .Where(imageDetails => imageDetails.ProductID == prod.ProductID) // Filter images by ProductID
+                                        .Select(imageDetails => new
+                                        {
+                                            ProductImageURL = imageDetails.ProductImageURL
+                                        }).ToList()
+                    }).ToList()
                 });
             }
             catch (Exception ex)
@@ -75,7 +105,7 @@ namespace ProductManagement.Controllers
         [FromQuery] decimal? maxWholesalePrice = null,
         [FromQuery] decimal? minRetailPrice = null,
         [FromQuery] decimal? maxRetailPrice = null,
-        [FromQuery] int? quantity = null,  
+        [FromQuery] int? quantity = null,
         [FromQuery] string? sortBy = null,
         [FromQuery] bool? sortDescending = null,
         [FromQuery] int? pageNumber = null,
@@ -138,7 +168,7 @@ namespace ProductManagement.Controllers
         //            ErrorMessage = string.Empty
         //        });
 
-                
+
         //    }
         //    catch (Exception ex)
         //    {
@@ -158,7 +188,7 @@ namespace ProductManagement.Controllers
             try
             {
                 var products = await productRepository.GetProductByIdAsync(id);
-                
+
                 if (products == null || !products.Any())
                 {
                     return Ok(new
@@ -168,9 +198,9 @@ namespace ProductManagement.Controllers
                     });
                 }
 
-                // Get related order details for each order
+                // Get related product image details for each product
                 var productImage = await productImageRepository.FindByCondition(prd => products.Select(p => p.ProductID).Contains(prd.ProductID)).ToListAsync();
-                                                
+
                 // Map entities to DTOs
                 var productsDto = _mapper.Map<List<ProductDTO>>(products);
                 var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImage);
@@ -187,7 +217,7 @@ namespace ProductManagement.Controllers
                         ManufacturerID = prod.ManufacturerID,
                         ProductName = prod.ProductName,
                         Description = prod.Description,
-                        Category = prod.Category,     
+                        Category = prod.Category,
                         WholesalePrice = prod.WholesalePrice,
                         RetailPrice = prod.RetailPrice,
                         Quantity = prod.Quantity,
@@ -197,11 +227,11 @@ namespace ProductManagement.Controllers
                         CreatedOn = prod.CreatedOn,
                         UpdatedOn = prod.UpdatedOn,
                         IsActive = prod.IsActive,
-                        
+
                         ProductImage = productImageDto.Select(imageDetails => new
                         {
                             ProductImageURL = imageDetails.ProductImageURL
-                            
+
                         }).ToList()
                     }).ToList()
                 });
@@ -244,7 +274,7 @@ namespace ProductManagement.Controllers
 
                 // Optionally update properties that aren’t handled by AutoMapper.
                 existingProduct[0].UpdatedOn = DateTime.UtcNow;
-                
+
                 // Update the product in the repository
                 var updatedProduct = await productRepository.UpdateProductAsync(id, existingProduct[0]);
 
@@ -257,7 +287,7 @@ namespace ProductManagement.Controllers
                         ErrorMessage = "Internal server error."
                     });
                 }
-            
+
                 return Ok(new
                 {
                     Message = "Product updated successfully.",
