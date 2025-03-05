@@ -180,7 +180,7 @@ namespace ProductManagement.Controllers
 
                     Message = "Product fetched successfully.",
                     ErrorMessage = string.Empty,
-                    Data = productsDto.Select(prod => new
+                    Product = productsDto.Select(prod => new
                     {
                         ProductID = prod.ProductID,
                         ProductCode = prod.ProductCode,
