@@ -111,6 +111,20 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger"; // Access at http://localhost:3016/swagger
 });
 
+// Create the folder if it doesn't exist
+string uploadPath = "wwwroot/uploads/images";
+if (!Directory.Exists(uploadPath))
+{
+	Directory.CreateDirectory(uploadPath);
+}
+	
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "wwwroot/uploads/images")),
+    RequestPath = "/uploads/images"
+});
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
