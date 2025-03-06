@@ -18,10 +18,9 @@ namespace ProductManagement.Repositories
         decimal? minRetailPrice,
         decimal? maxRetailPrice,
         int? quantity,
-        string? sortBy,
         bool? sortDescending,
-        int? pageNumber,
-        int? pageSize);
+        int pageNumberValue,
+        int pageSizeValue);
 
         Task<List<Product>> GetProductByIdAsync(Guid id);
 
@@ -34,6 +33,8 @@ namespace ProductManagement.Repositories
         Task<string> GetProductCodeAsync();
 
         Task InsertProductImageAsync(ProductImage productImage);
+
+        Task<int> GetTotalProductCountAsync(string? searchText, int? category, decimal? minWholesalePrice, decimal? maxWholesalePrice, decimal? minRetailPrice, decimal? maxRetailPrice, int? quantity);
 
     }
 }

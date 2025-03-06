@@ -97,7 +97,7 @@ namespace ProductManagement.Controllers
             }
         }
 
-        [HttpGet("filter")]
+        [HttpGet("GetFilteredProducts")]
         public async Task<IActionResult> GetFilteredProducts(
         [FromQuery] string? searchText = null,
         [FromQuery] int? category = null,
@@ -106,30 +106,52 @@ namespace ProductManagement.Controllers
         [FromQuery] decimal? minRetailPrice = null,
         [FromQuery] decimal? maxRetailPrice = null,
         [FromQuery] int? quantity = null,
-        [FromQuery] string? sortBy = null,
         [FromQuery] bool? sortDescending = null,
         [FromQuery] int? pageNumber = null,
         [FromQuery] int? pageSize = null)
         {
             try
             {
+                int pageNumberValue = pageNumber ?? 1;
+                int pageSizeValue = pageSize ?? 10;
+
                 var products = await productRepository.GetFilteredProductsAsync(
-                    searchText, category, minWholesalePrice, maxWholesalePrice, minRetailPrice, maxRetailPrice,
-                    quantity, sortBy, sortDescending, pageNumber, pageSize);
+                    searchText, category, minWholesalePrice, maxWholesalePrice, minRetailPrice,
+                    maxRetailPrice, quantity, sortDescending, pageNumberValue, pageSizeValue);
 
                 if (!products.Any())
                 {
-                    return NotFound(new { Message = "No products found.", ErrorMessage = "No data available." });
+                    return NotFound(new { Message = "No results found. Please adjust your filters.", ErrorMessage = "No data available." });
                 }
 
-                var productDTOs = _mapper.Map<List<ProductDTO>>(products);
-                return Ok(new { Message = "Products retrieved successfully.", Product = productDTOs, ErrorMessage = string.Empty });
+                int totalProducts = await productRepository.GetTotalProductCountAsync(searchText, category, minWholesalePrice, maxWholesalePrice, minRetailPrice, maxRetailPrice, quantity);
+                int totalPages = (int)Math.Ceiling((double)totalProducts / pageSizeValue);
+
+                var filteredProductDTOs = _mapper.Map<List<ProductDTO>>(products); //Map product data
+
+                return Ok(new
+                {
+                    Message = "Products retrieved successfully.",
+                    Product = filteredProductDTOs,
+                    TotalPages = totalPages,
+                    SearchText = searchText ?? "",
+                    Category = category,
+                    MinWholesalePrice = minWholesalePrice,
+                    MaxWholesalePrice = maxWholesalePrice,
+                    MinRetailPrice = minRetailPrice,
+                    MaxRetailPrice = maxRetailPrice,
+                    Quantity = quantity,
+                    SortDescending = sortDescending ?? false,
+                    PageNumber = pageNumberValue,
+                    PageSize = pageSizeValue
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "An error occurred while retrieving the products.", ErrorMessage = ex.Message });
             }
         }
+
 
         //[HttpGet]
         //[Route("{id}")]

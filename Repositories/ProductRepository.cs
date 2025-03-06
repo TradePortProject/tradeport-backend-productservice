@@ -28,10 +28,9 @@ namespace ProductManagement.Repositories
         decimal? minRetailPrice,
         decimal? maxRetailPrice,
         int? quantity,
-        string? sortBy,
         bool? sortDescending,
-        int? pageNumber,
-        int? pageSize)
+        int pageNumberValue,
+        int pageSizeValue)
         {
             var query = dbContext.Products.Where(p => p.IsActive);
 
@@ -75,30 +74,36 @@ namespace ProductManagement.Repositories
             }
 
             // Apply sorting
-            sortBy = string.IsNullOrWhiteSpace(sortBy) ? "productname" : sortBy.ToLower();
-            bool sortDesc = sortDescending ?? false;
+            //sortBy = string.IsNullOrWhiteSpace(sortBy) ? "productname" : sortBy.ToLower();
+            //bool sortDesc = sortDescending ?? false;
 
-            switch (sortBy)
-            {
-                case "retailprice":
-                    query = sortDesc ? query.OrderByDescending(p => p.RetailPrice) : query.OrderBy(p => p.RetailPrice);
-                    break;
-                case "productname":
-                    query = sortDesc ? query.OrderByDescending(p => p.ProductName) : query.OrderBy(p => p.ProductName);
-                    break;
-                case "category":
-                    query = sortDesc ? query.OrderByDescending(p => p.Category) : query.OrderBy(p => p.Category);
-                    break;
-                default:
-                    query = query.OrderBy(p => p.ProductName);
-                    break;
-            }
+            //switch (sortBy)
+            //{
+            //    case "retailprice":
+            //        query = sortDesc ? query.OrderByDescending(p => p.RetailPrice) : query.OrderBy(p => p.RetailPrice);
+            //        break;
+            //    case "productname":
+            //        query = sortDesc ? query.OrderByDescending(p => p.ProductName) : query.OrderBy(p => p.ProductName);
+            //        break;
+            //    case "category":
+            //        query = sortDesc ? query.OrderByDescending(p => p.Category) : query.OrderBy(p => p.Category);
+            //        break;
+            //    default:
+            //        query = query.OrderBy(p => p.ProductName);
+            //        break;
+            //}
 
-            // Apply pagination
-            int page = pageNumber ?? 1;
-            int size = pageSize ?? 10; //Set defaults pageSize to 10 if not specified.
+            //Assign default values if null
+            bool sortDescendingValue = sortDescending ?? false;
 
-            query = query.Skip((page - 1) * size).Take(size);
+            //Enforce sorting by ProductName
+            query = sortDescendingValue
+                ? query.OrderByDescending(p => p.ProductName)
+                : query.OrderBy(p => p.ProductName);
+
+            //Apply pagination AFTER sorting
+            query = query.Skip((pageNumberValue - 1) * pageSizeValue).Take(pageSizeValue);
+
 
             return await query.ToListAsync();
         }
@@ -198,6 +203,45 @@ namespace ProductManagement.Repositories
         {
             dbContext.ProductImages.Add(productImage);
             await dbContext.SaveChangesAsync();
+        }
+
+
+        public async Task<int> GetTotalProductCountAsync(string? searchText, int? category, decimal? minWholesalePrice, decimal? maxWholesalePrice, decimal? minRetailPrice, decimal? maxRetailPrice, int? quantity)
+        {
+            var query = dbContext.Products.Where(p => p.IsActive);
+            // Apply filtering
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                query = query.Where(p =>
+                    p.ProductCode.Contains(searchText) ||
+                    p.ProductName.Contains(searchText) ||
+                    p.Description.Contains(searchText));
+            }
+            if (category.HasValue)
+            {
+                query = query.Where(p => p.Category == category.Value);
+            }
+            if (minWholesalePrice.HasValue)
+            {
+                query = query.Where(p => p.WholesalePrice >= minWholesalePrice.Value);
+            }
+            if (maxWholesalePrice.HasValue)
+            {
+                query = query.Where(p => p.WholesalePrice <= maxWholesalePrice.Value);
+            }
+            if (minRetailPrice.HasValue)
+            {
+                query = query.Where(p => p.RetailPrice >= minRetailPrice.Value);
+            }
+            if (maxRetailPrice.HasValue)
+            {
+                query = query.Where(p => p.RetailPrice <= maxRetailPrice.Value);
+            }
+            if (quantity.HasValue)
+            {
+                query = query.Where(p => p.Quantity >= quantity);
+            }
+            return await query.CountAsync();
         }
     }
 }
