@@ -124,15 +124,59 @@ namespace ProductManagement.Controllers
                     return NotFound(new { Message = "No results found. Please adjust your filters.", ErrorMessage = "No data available." });
                 }
 
+                // Get related Product Image details for each product
+                var productImage = await productImageRepository.FindByCondition(prd => products.Select(p => p.ProductID).Contains(prd.ProductID)).ToListAsync();
+
                 int totalProducts = await productRepository.GetTotalProductCountAsync(searchText, category, minWholesalePrice, maxWholesalePrice, minRetailPrice, maxRetailPrice, quantity);
                 int totalPages = (int)Math.Ceiling((double)totalProducts / pageSizeValue);
 
-                var filteredProductDTOs = _mapper.Map<List<ProductDTO>>(products); //Map product data
+                // Use AutoMapper to map the list of Product entities to ProductDTOs.
+                var productDTOs = _mapper.Map<List<ProductDTO>>(products);
+                var productImageDto = _mapper.Map<List<ProductImageDTO>>(productImage);
 
                 return Ok(new
                 {
-                    Message = "Products retrieved successfully.",
-                    Product = filteredProductDTOs,
+                    //Message = "Products retrieved successfully.",
+                    //Product = productDTOs,
+                    //TotalPages = totalPages,
+                    //SearchText = searchText ?? "",
+                    //Category = category,
+                    //MinWholesalePrice = minWholesalePrice,
+                    //MaxWholesalePrice = maxWholesalePrice,
+                    //MinRetailPrice = minRetailPrice,
+                    //MaxRetailPrice = maxRetailPrice,
+                    //Quantity = quantity,
+                    //SortDescending = sortDescending ?? false,
+                    //PageNumber = pageNumberValue,
+                    //PageSize = pageSizeValue
+
+                    Message = "Product retrieved successfully.",
+                    ErrorMessage = string.Empty,
+                    Product = productDTOs.Select(prod => new
+                    {
+                        ProductID = prod.ProductID,
+                        ProductCode = prod.ProductCode,
+                        ManufacturerID = prod.ManufacturerID,
+                        ProductName = prod.ProductName,
+                        Description = prod.Description,
+                        Category = prod.Category,
+                        WholesalePrice = prod.WholesalePrice,
+                        RetailPrice = prod.RetailPrice,
+                        Quantity = prod.Quantity,
+                        RetailCurrency = prod.RetailCurrency,
+                        WholeSaleCurrency = prod.WholeSaleCurrency,
+                        ShippingCost = prod.ShippingCost,
+                        CreatedOn = prod.CreatedOn,
+                        UpdatedOn = prod.UpdatedOn,
+                        IsActive = prod.IsActive,
+
+                        ProductImage = productImageDto
+                                        .Where(imageDetails => imageDetails.ProductID == prod.ProductID) // Filter images by ProductID
+                                        .Select(imageDetails => new
+                                        {
+                                            ProductImageURL = imageDetails.ProductImageURL
+                                        }).ToList()
+                    }).ToList(),
                     TotalPages = totalPages,
                     SearchText = searchText ?? "",
                     Category = category,
