@@ -11,7 +11,8 @@ services:
       - DB_DATABASE=tradeportdb
     networks:
       - my_network
-
+    volumes:
+      - "C:/wwwroot/uploads/images:/app/wwwroot/uploads/images" # Corrected volume path for Windows
 networks:
   my_network:
     external: true
