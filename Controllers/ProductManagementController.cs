@@ -13,9 +13,10 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ProductManagement.Controllers
 {
+    
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    
     public class ProductManagementController : ControllerBase
     {
 
@@ -31,6 +32,7 @@ namespace ProductManagement.Controllers
             _mapper = mapper;
         }
 
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAllProducts()
         {
