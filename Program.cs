@@ -8,6 +8,11 @@ using AutoMapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Data.SqlClient;
 using System.Text;
+using ProductManagement.Logger.interfaces;
+using ProductManagement.Logger;
+using Serilog.Events;
+using Serilog.Filters;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,7 +67,16 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
-
+// Configure Serilog from appsettings.json
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)  // Reads from appsettings.json
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Filter.ByIncludingOnly(Matching.FromSource("OrderManagement.Controllers.OrderManagementController"))
+    .CreateLogger();
+builder.Host.UseSerilog(); // Register Serilog
+// Register IAppLogger<T>
+builder.Services.AddScoped(typeof(IAppLogger<>), typeof(AppLogger<>));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
