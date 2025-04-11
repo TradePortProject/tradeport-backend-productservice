@@ -536,7 +536,11 @@ namespace ProductManagement.Controllers
             try
             {
                 // Ensure the folder exists
-                string uploadsFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
+                //string uploadsFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
+
+                string uploadsFolderPath = Environment.GetEnvironmentVariable("UPLOAD_PATH") ??
+                                           Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
+
 
                 // Create the folder if it doesn't exist
                 if (!Directory.Exists(uploadsFolderPath))

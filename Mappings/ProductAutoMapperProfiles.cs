@@ -24,6 +24,10 @@ namespace ProductManagement.Mappings
             //    opt => opt.MapFrom(src => EnumHelper.GetEnumFromDescription<Category>(src.CategoryDescription))
             //);
 
+            CreateMap<CreateProductDTO, Product>()
+                .ForMember(dest => dest.Category,
+                    opt => opt.MapFrom(src => EnumHelper.GetEnumFromDescription<Category>(src.Category)));
+
             // Map from UpdateProductDTO to Product entity.
             CreateMap<UpdateProductDTO, Product>();
             //.ForMember(
