@@ -3,12 +3,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 # Copy the csproj and restore dependencies
-COPY *.csproj ./
-RUN dotnet restore
+# COPY *.csproj ./
+COPY . ./
+RUN dotnet restore ProductManagement.csproj
 
 # Copy the rest of the application and build it
 COPY . ./
-RUN dotnet publish -c Release -o /app/out
+# RUN dotnet publish -c Release -o /app/out
+RUN dotnet publish ProductManagement.csproj -c Release -o /app/out
 
 # List the contents of the output directory
 RUN ls -l /app/out
