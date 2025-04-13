@@ -10,6 +10,7 @@ using AutoMapper;
 using ProductManagement.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using ProductManagement.Logger.interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 
 namespace ProductManagement.Controllers

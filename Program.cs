@@ -46,17 +46,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Register repository
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
-// Configure CORS
+// Add CORS service
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSpecificOrigins",
-    builder =>
-    {
-        builder.WithOrigins("http://localhost:3001") // Add the ReactJS app origin
-               .AllowAnyHeader()
-               .AllowAnyMethod()
-               .AllowCredentials();
-    });
+    options.AddPolicy("AllowAll",
+        policy => policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod());
 });
 
 builder.WebHost.ConfigureKestrel(options =>
@@ -83,26 +80,41 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = true,
+            ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"]           
 
         };
+
+        // Log the issuer for debugging purposes
+        Console.WriteLine($"Issuer: {options.TokenValidationParameters.ValidIssuer}");
 
         // This is needed for CORS support
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                Console.WriteLine($"Authorization header: {authHeader}");
+                return Task.CompletedTask;
+            },
             OnChallenge = context =>
             {
                 context.HandleResponse(); // Prevent default unauthorized response
                 context.Response.StatusCode = 401;
                 context.Response.ContentType = "application/json";
                 return context.Response.WriteAsync("{\"message\": \"Token is missing or invalid\"}");
-            }
+            },
+             OnAuthenticationFailed = context =>
+             {
+                 // Log authentication failure
+                 Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                 return Task.CompletedTask;
+             }
         };
     });
 
@@ -148,6 +160,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Enable CORS with the specified policy
-app.UseCors("AllowSpecificOrigins");
+app.UseCors("AllowAll");
 
 app.Run();
