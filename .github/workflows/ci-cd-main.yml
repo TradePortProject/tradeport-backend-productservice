@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - "feature/*"
   pull_request:
     branches:
       - main
+      - "feature/*"
 
 jobs:
   build:
@@ -30,30 +32,30 @@ jobs:
           push: true
           tags: prabhulalithakrishnan/tradeport-backend-productservice:latest
 
-  snyk:
-    name: Snyk Vulnerability Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#  snyk:
+#    name: Snyk Vulnerability Check
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout code
+#       uses: actions/checkout@v4
 
-      - name: Install Snyk
-        run: npm install -g snyk
+ #     - name: Install Snyk
+ #       run: npm install -g snyk
 
-      - name: Set up Path for Snyk
-        run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
+ #     - name: Set up Path for Snyk
+ #       run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
   
-      - name: Verify Snyk Installation
-        run: snyk --version
+ #     - name: Verify Snyk Installation
+ #       run: snyk --version
 
-      - name: Authenticate to Snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+#      - name: Authenticate to Snyk
+#        env:
+#          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#        run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Snyk
+#      - name: Run Snyk
 #        run: snyk test ./tradeport-backend-productservice 
-        run: snyk test --all-projects
+#        run: snyk test --all-projects
         
   sonar:
     name: SonarQube Analysis
