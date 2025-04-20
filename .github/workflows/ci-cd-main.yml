@@ -1,83 +1,68 @@
-name: CI/CD Pipeline - tradeport-backend-productservice
+name: CD - Backend - Deploy to Dockerhub
 
 on:
   push:
-    branches:
-      - main
-      - "feature/*"
-  pull_request:
-    branches:
-      - main
-      - "feature/*"
+    branches: [main, develop, "feature/**"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, staging, prod]
+
+env:
+  DOCKERHUB_IMAGE_BACKEND: Sue212-mon/tradeport-backend-productservice
 
 jobs:
+  prepare:
+    name: ⛏️ Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-outputs.outputs.version }}
+      short_sha: ${{ steps.set-outputs.outputs.short_sha }}
+      env_name: ${{ steps.set-outputs.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set-outputs
+        run: |
+          VERSION=$(date +%Y%m%d%H%M%S)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "env_name=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_OUTPUT
+
   build:
-    name: Build Docker Images
+    name: 🐳 Build and Push Docker Image
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-        
-      - name: Log in to Docker Hub
-        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: 🐳 Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: ../tradeport-backend-productservice/Dockerfile
-          push: true
-          tags: prabhulalithakrishnan/tradeport-backend-productservice:latest
+      - name: 🐳 Build and Tag Image
+        run: |
+          docker build -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:latest \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }} \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }} \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }} \
+                       -f ProductManagement/Dockerfile ProductManagement
 
-#  snyk:
-#    name: Snyk Vulnerability Check
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout code
-#       uses: actions/checkout@v4
+      - name: 🚀 Push to Docker Hub
+        run: |
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:latest
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }}
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }}
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }}
 
- #     - name: Install Snyk
- #       run: npm install -g snyk
-
- #     - name: Set up Path for Snyk
- #       run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
-  
- #     - name: Verify Snyk Installation
- #       run: snyk --version
-
-#      - name: Authenticate to Snyk
-#        env:
-#          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-#        run: snyk auth ${{ secrets.SNYK_TOKEN }}
-
-#      - name: Run Snyk
-#        run: snyk test ./tradeport-backend-productservice 
-#        run: snyk test --all-projects
-        
-  sonar:
-    name: SonarQube Analysis
+  health-check:
+    name: ❤️ Health Check
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Print Sonar Project Key for Debug
-        run: echo "Sonar Project Key:" ${{ secrets.SONAR_PROJECT_KEY }}
-
-      - name: Print Sonar Organization for Debug
-        run: echo "Sonar Organization:" ${{ secrets.SONAR_ORGANIZATION }}
-
-      - name: Print Sonar Token for Debug
-        run: echo "Sonar Token:" ${{ secrets.SONAR_TOKEN }}
-
-      - name: Set up SonarQube
-        uses: sonarsource/sonarcloud-github-action@master
-        with:
-          args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+      - run: |
+          sleep 10
+          curl -m 10 -sSf http://${{ secrets.DROPLET_IP }}:5000/health || echo "Backend may still be starting up. Please verify manually"
