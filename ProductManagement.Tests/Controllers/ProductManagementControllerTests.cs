@@ -598,7 +598,7 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Created Product",
                 Description = "Test Desc",
-                Category = "Furniture",
+                Category = "1",
                 RetailCurrency = "USD",
                 WholeSaleCurrency = "USD"
             };
@@ -639,7 +639,7 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Created Product",
                 Description = "With Image",
-                Category = "Furniture",
+                Category = "1",
                 RetailCurrency = "USD",
                 WholeSaleCurrency = "USD"
             };
@@ -702,7 +702,7 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Fails",
                 Description = "Test",
-                Category = "Furniture",
+                Category = "1",
                 RetailCurrency = "USD",
                 WholeSaleCurrency = "USD"
             };
@@ -903,7 +903,7 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Trigger Delete Error",
                 Description = "Force DeleteImage exception",
-                Category = "Furniture",
+                Category = "1",
                 RetailCurrency = "USD",
                 WholeSaleCurrency = "USD"
             };
@@ -945,7 +945,7 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Create Folder",
                 Description = "Trigger directory creation",
-                Category = "Furniture",
+                Category = "1",
                 RetailCurrency = "USD",
                 WholeSaleCurrency = "USD"
             };
@@ -1085,7 +1085,7 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Trigger Delete Failure",
                 Description = "Test catch block",
-                Category = "Furniture",
+                Category = "1",
                 RetailCurrency = "USD",
                 WholeSaleCurrency = "USD"
             };
