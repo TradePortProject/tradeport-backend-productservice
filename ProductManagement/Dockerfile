@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy the csproj and restore dependencies
 # COPY *.csproj ./
-COPY . ./
+COPY ProductManagement.csproj ./
 RUN dotnet restore ProductManagement.csproj
 
 # Copy the rest of the application and build it
