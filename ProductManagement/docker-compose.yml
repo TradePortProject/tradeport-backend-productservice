@@ -1,6 +1,7 @@
 services:
   productservice:
     build: .
+    container_name: productservice
     ports:
       - "3016:3016"
     environment:
