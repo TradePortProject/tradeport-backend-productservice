@@ -1,5 +1,6 @@
 services:
   productservice:
+    image: productservice
     build: .
     container_name: productservice
     ports:
