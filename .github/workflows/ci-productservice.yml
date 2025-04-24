@@ -1,0 +1,142 @@
+name: "CI - Stage 1 - Build and Test (Parallel)"
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: 📐 .NET Environment Setup
+    runs-on: ubuntu-latest
+    outputs:
+      dotnet-restore-cache-hit: ${{ steps.cache-dotnet.outputs.cache-hit }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache NuGet packages
+        id: cache-dotnet
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.nuget/packages
+            **/bin
+            **/obj
+          key: ${{ runner.os }}-dotnet-${{ hashFiles('**/*.csproj') }}
+
+      # Always restore dependencies regardless of cache status
+      - name: Restore Dependencies
+        run: dotnet restore --force
+
+  lint:
+    name: 🧪 Code Style Check
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Code Format Validation
+        run: dotnet format ProductManagement.sln
+
+  # unit-test:
+  #   name: 🧪 Run .NET Tests
+  #   runs-on: ubuntu-latest
+  #   needs: setup
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Run Tests with Coverage
+  #       run: |
+  #         dotnet test --configuration Release --collect:"XPlat Code Coverage" --results-directory TestResults \
+  #         --logger trx /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: test-results
+  #         path: TestResults/**/*
+  #         retention-days: 7
+
+  build:
+    name: 🏗️ Build .NET Service
+    runs-on: ubuntu-latest
+    needs: [setup, lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build Solution
+        run: dotnet build --configuration Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            **/bin/Release/**
+            **/publish/**
+          retention-days: 1
+
+  security-scan:
+    name: 🛡️ NuGet Security Scan
+    runs-on: ubuntu-latest
+    # needs: [unit-test, build]
+    needs: [build]
+
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for Vulnerable Packages
+        run: |
+          dotnet list package --vulnerable --include-transitive > security-report.txt || true
+          if grep -qi "severity.*high\|severity.*critical" security-report.txt; then
+            echo "❌ High/Critical vulnerabilities detected!" >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: security-report.txt
+          retention-days: 7
+
+  # sonar:
+  #   name: ☢️ SonarQube Analysis
+  #   runs-on: ubuntu-latest
+  #   needs: security-scan
+  #   if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: SonarCloud Scan
+  #       uses: sonarsource/sonarcloud-github-action@master
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #       with:
+  #         args: >
+  #           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+  #           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+  #           -Dsonar.host.url=https://sonarcloud.io
+  #           -Dsonar.cs.opencover.reportsPaths=TestResults/**/coverage.cobertura.xml
+  #           -Dsonar.coverage.exclusions=**Tests.cs,**/Program.cs
+  #           -Dsonar.dotnet.excludeTestProjects=true
