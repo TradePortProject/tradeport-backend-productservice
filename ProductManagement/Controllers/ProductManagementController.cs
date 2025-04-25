@@ -35,7 +35,7 @@ namespace ProductManagement.Controllers
             _logger = logger;
         }
 
-        
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllProducts()
         {        
