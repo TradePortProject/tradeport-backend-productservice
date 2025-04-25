@@ -14,10 +14,10 @@ using ProductManagement.Logger.interfaces;
 
 namespace ProductManagement.Controllers
 {
-    
-    [Route("api/[controller]")]
     [ApiController]
-    
+    [Route("api/[controller]")]  
+    [Authorize]
+
     public class ProductManagementController : ControllerBase
     {
 
@@ -35,7 +35,7 @@ namespace ProductManagement.Controllers
             _logger = logger;
         }
 
-        //[Authorize]
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllProducts()
         {        
