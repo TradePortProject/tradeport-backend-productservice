@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigins",
     builder =>
     {
-        builder.WithOrigins("http://tradeport.cloud:3001") 
+        builder.WithOrigins("http://tradeport.cloud:3001")  
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
