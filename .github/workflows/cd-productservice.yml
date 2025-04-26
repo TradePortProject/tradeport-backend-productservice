@@ -49,7 +49,7 @@ jobs:
                        -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }} \
                        -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }} \
                        -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }} \
-                       -f ProductManagement/Dockerfile ProductManagement
+                       -f ProductManagement/Dockerfile .
 
       - name: 🚀 Push to Docker Hub
         run: |
