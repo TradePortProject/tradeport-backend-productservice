@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigins",
     builder =>
     {
-        builder.WithOrigins("http://localhost:3001") 
+        builder.WithOrigins("http://tradeport.cloud:3001") 
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
@@ -124,7 +124,7 @@ app.UseSwaggerUI(c =>
 });
 
 // Create the folder if it doesn't exist
-string uploadPath = "wwwroot/uploads/images";
+string uploadPath = "/mnt/volume_sgp1_01/uploads/images";
 if (!Directory.Exists(uploadPath))
 {
 	Directory.CreateDirectory(uploadPath);
