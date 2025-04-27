@@ -4,11 +4,11 @@ WORKDIR /app
 
 # Copy the csproj and restore dependencies
 # COPY *.csproj ./
-COPY . ./
+COPY ProductManagement/ProductManagement.csproj ./
 RUN dotnet restore ProductManagement.csproj
 
 # Copy the rest of the application and build it
-COPY . ./
+COPY ProductManagement/. ./
 # RUN dotnet publish -c Release -o /app/out
 RUN dotnet publish ProductManagement.csproj -c Release -o /app/out
 

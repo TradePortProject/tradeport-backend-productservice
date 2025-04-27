@@ -1,0 +1,68 @@
+name: CD - Backend - Deploy to Dockerhub
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, staging, prod]
+
+env:
+  DOCKERHUB_IMAGE_BACKEND: prabhulalithakrishnan/productservice
+
+jobs:
+  prepare:
+    name: ⛏️ Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-outputs.outputs.version }}
+      short_sha: ${{ steps.set-outputs.outputs.short_sha }}
+      env_name: ${{ steps.set-outputs.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set-outputs
+        run: |
+          VERSION=$(date +%Y%m%d%H%M%S)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "env_name=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_OUTPUT
+
+  build:
+    name: 🐳 Build and Push Docker Image
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐳 Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: 🐳 Build and Tag Image
+        run: |
+          docker build -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:latest \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }} \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }} \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }} \
+                       -f ProductManagement/Dockerfile .
+
+      - name: 🚀 Push to Docker Hub
+        run: |
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:latest
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }}
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }}
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }}
+
+  health-check:
+    name: ❤️ Health Check
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sleep 10
+          curl -m 10 -sSf http://${{ secrets.DROPLET_IP }}:5000/health || echo "Backend may still be starting up. Please verify manually"
