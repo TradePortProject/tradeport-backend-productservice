@@ -107,6 +107,7 @@ namespace ProductManagement.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpGet("GetFilteredProducts")]
         public async Task<IActionResult> GetFilteredProducts(
             [FromQuery] string? searchText = null,
