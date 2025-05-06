@@ -9,6 +9,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # Every day at 00:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,15 +27,15 @@ jobs:
     outputs:
       dotnet-restore-cache-hit: ${{ steps.cache-dotnet.outputs.cache-hit }}
     steps:
-      - name: Checkout Repository
+      - name: 🧾 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: 🧰 Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
-      - name: Cache NuGet packages
+      - name: 💾 Cache NuGet packages
         id: cache-dotnet
         uses: actions/cache@v3
         with:
@@ -39,7 +45,7 @@ jobs:
             **/obj
           key: ${{ runner.os }}-dotnet-${{ hashFiles('**/*.csproj') }}
 
-      - name: Restore Dependencies
+      - name: 📦 Restore Dependencies (Force)
         run: dotnet restore --force
 
   lint:
@@ -48,74 +54,119 @@ jobs:
     needs: setup
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Code Format
+        run: dotnet format --verify-no-changes || echo "⚠️ Code formatting issues found"
 
-      - name: Run dotnet format
-        continue-on-error: true
-        run: |
-          dotnet format --verify-no-changes --verbosity diagnostic > lint-report.txt || true
-
-      - name: Upload Lint Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-report
-          path: lint-report.txt
-          retention-days: 3
-
-  build:
-    name: 🏗️ Build .NET Service
+  build-test:
+    name: 🧪 Build & Test .NET Service
     runs-on: ubuntu-latest
     needs: [setup, lint]
     steps:
-      - uses: actions/checkout@v4
+      - name: 🧾 Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: 🧰 Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore dependencies
+      - name: 📦 Restore Dependencies
         run: dotnet restore
 
-      - name: Build Solution
-        run: dotnet build --configuration Release
+      - name: 🏗️ Build Project
+        run: dotnet build --no-restore --configuration Release
 
-      - uses: actions/upload-artifact@v4
+      - name: 🧪 Run Unit Tests with Code Coverage
+        run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: 🛠 Install ReportGenerator Tool
+        run: dotnet tool update --global dotnet-reportgenerator-globaltool
+
+      - name: 🧾 Generate Code Coverage Report
+        run: |
+          reportgenerator \
+            -reports:"**/TestResults/**/*.xml" \
+            -targetdir:"TestResults/CodeCoverageReport" \
+            -reporttypes:Html
+
+      - name: ⬆ Upload Test Results
+        uses: actions/upload-artifact@v4
         with:
-          name: build-output
-          path: |
-            **/bin/Release/**
-            **/publish/**
-          retention-days: 1
+          name: test-results
+          path: TestResults/
 
-  security-scan:
-    name: 🛡️ NuGet Security Scan
+  nuget-sca:
+    name: 📦 NuGet Vulnerability Scan
     runs-on: ubuntu-latest
-    needs: [build]
-
-    permissions:
-      contents: read
-      security-events: write
-
+    needs: build-test
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: 📦 Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
-      - name: Scan for Vulnerable Packages
+      - name: 📦 Restore Dependencies
+        run: dotnet restore
+
+      - name: 🔍 Scan for Vulnerabilities (NuGet)
         run: |
           dotnet list package --vulnerable --include-transitive > security-report.txt || true
           if grep -qi "severity.*high\|severity.*critical" security-report.txt; then
-            echo "⚠️ High/Critical vulnerabilities found — please review manually"
+            echo "⚠️ High/Critical vulnerabilities found — check report"
             grep -i "severity" security-report.txt || true
           else
-            echo "✅ No high/critical vulnerabilities"
+            echo "✅ No high/critical vulnerabilities found"
           fi
-
-      - uses: actions/upload-artifact@v4
+      - name: 📤 Upload NuGet Scan Report
+        uses: actions/upload-artifact@v4
         with:
-          name: security-reports
+          name: nuget-vulnerability-report
           path: security-report.txt
-          retention-days: 7
+
+  owasp-sca:
+    name: ☢️ OWASP Dependency Check
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ☢️ Run OWASP Dependency Check
+        continue-on-error: true
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "TradePort-Backend"
+          path: "."
+          format: "HTML"
+          args: >
+            --failOnCVSS 11
+            --enableRetired
+      - name: 📤 Upload OWASP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: reports
+
+  # sonar:
+  #   name: ☢️ SonarQube Analysis
+  #   runs-on: ubuntu-latest
+  #   needs: build-test
+  #   if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: SonarCloud Scan
+  #       uses: sonarsource/sonarcloud-github-action@master
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #       with:
+  #         args: >
+  #           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+  #           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+  #           -Dsonar.host.url=https://sonarcloud.io
+  #           -Dsonar.cs.opencover.reportsPaths=TestResults/**/coverage.cobertura.xml
+  #           -Dsonar.coverage.exclusions=**Tests.cs,**/Program.cs
+  #           -Dsonar.dotnet.excludeTestProjects=true
