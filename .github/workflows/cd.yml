@@ -1,0 +1,87 @@
+name: "CI - Backend Product - Deploy Tradeport Product Service  to Dockerhub"
+
+on:
+  workflow_run:
+    workflows: ["CI - Backend Product - Build, Test & Security Scan"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  DOCKERHUB_IMAGE_BACKEND: prabhulalithakrishnan/productservice
+  REMOTE_DIR: /root/tradeport
+
+jobs:
+  prepare:
+    name: ⛏️ Prepare Environment
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-outputs.outputs.version }}
+      short_sha: ${{ steps.set-outputs.outputs.short_sha }}
+      env_name: ${{ steps.set-outputs.outputs.env_name }}
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Determine version and set outputs
+        id: set-outputs
+        run: |
+          VERSION=$(date +%Y%m%d%H%M%S)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          echo "env_name=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_OUTPUT
+
+      - name: 📤 Upload .env file
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-file
+          path: .env
+          retention-days: 1
+          if-no-files-found: warn
+
+  build:
+    name: 🏗️ Build Identity Service Image
+    if: success()
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐳 Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: 🐳 Build and Tag Image
+        run: |
+          docker build -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:latest \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }} \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }} \
+                       -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }} \
+                       -f UserManagement/Dockerfile .
+
+      - name: 🚀 Push to Docker Hub
+        run: |
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:latest
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }}
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }}
+          docker push ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }}
+
+  health-check:
+    name: ❤️ Health Check
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sleep 10
+          curl -m 10 -sSf http://${{ secrets.DROPLET_IP }}:5000/health || echo "Backend may still be starting up. Please verify manually"
