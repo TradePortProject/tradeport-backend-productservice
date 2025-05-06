@@ -1,40 +1,59 @@
-name: CD - Backend - Deploy to Dockerhub
+name: "CI - Backend Product - Deploy Tradeport Product Service  to Dockerhub"
 
 on:
-  push:
-    branches: [main, develop, "feature/**"]
+  workflow_run:
+    workflows: ["CI - Backend Product - Build, Test & Security Scan"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       environment:
-        description: "Deployment Environment"
+        description: "Environment to deploy to"
         required: true
         default: "dev"
         type: choice
-        options: [dev, staging, prod]
+        options:
+          - dev
+          - prod
 
 env:
   DOCKERHUB_IMAGE_BACKEND: prabhulalithakrishnan/productservice
+  REMOTE_DIR: /root/tradeport
 
 jobs:
   prepare:
-    name: ⛏️ Prepare
+    name: ⛏️ Prepare Environment
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.set-outputs.outputs.version }}
       short_sha: ${{ steps.set-outputs.outputs.short_sha }}
       env_name: ${{ steps.set-outputs.outputs.env_name }}
     steps:
-      - uses: actions/checkout@v4
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
 
-      - id: set-outputs
+      - name: 🏷️ Determine version and set outputs
+        id: set-outputs
         run: |
           VERSION=$(date +%Y%m%d%H%M%S)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "short_sha=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
           echo "env_name=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_OUTPUT
 
+      - name: 📤 Upload .env file
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-file
+          path: .env
+          retention-days: 1
+          if-no-files-found: warn
+
   build:
-    name: 🐳 Build and Push Docker Image
+    name: 🏗️ Build Identity Service Image
+    if: success()
     needs: prepare
     runs-on: ubuntu-latest
     steps:
@@ -49,7 +68,7 @@ jobs:
                        -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.version }} \
                        -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.short_sha }} \
                        -t ${{ env.DOCKERHUB_IMAGE_BACKEND }}:${{ needs.prepare.outputs.env_name }} \
-                       -f ProductManagement/Dockerfile .
+                       -f UserManagement/Dockerfile .
 
       - name: 🚀 Push to Docker Hub
         run: |
