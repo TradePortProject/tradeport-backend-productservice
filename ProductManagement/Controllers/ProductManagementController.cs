@@ -1,21 +1,23 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
+using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using ProductManagement.aws;
 using ProductManagement.Data;
+using ProductManagement.Logger.interfaces;
 using ProductManagement.Models;
 using ProductManagement.Models.DTO;
 using ProductManagement.Repositories;
-using AutoMapper;
 using ProductManagement.Utilities;
-using Microsoft.AspNetCore.Authorization;
-using ProductManagement.Logger.interfaces;
 
 
 namespace ProductManagement.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]  
+    [Route("api/[controller]")]
     [Authorize]
 
     public class ProductManagementController : ControllerBase
@@ -26,19 +28,27 @@ namespace ProductManagement.Controllers
         private readonly IProductImageRepository productImageRepository;
         private readonly IMapper _mapper;
         private readonly IAppLogger<ProductManagementController> _logger;
-        public ProductManagementController(AppDbContext appDbContext, IProductRepository prodRepo, IProductImageRepository productImageRepo, IMapper mapper, IAppLogger<ProductManagementController> logger)
+        private readonly IAmazonS3 _s3Client;
+        private readonly string _bucket;
+        private readonly string _cdnBaseUrl;
+        public ProductManagementController(AppDbContext appDbContext, IProductRepository prodRepo, IProductImageRepository productImageRepo, IMapper mapper, IAppLogger<ProductManagementController> logger, IAmazonS3 s3Client, IOptions<AwsOptions> awsOptions)
         {
             this.dbContext = appDbContext;
             this.productRepository = prodRepo;
             this.productImageRepository = productImageRepo;
             _mapper = mapper;
             _logger = logger;
+            _s3Client = s3Client;
+            var aws = awsOptions.Value;
+            _bucket = aws.S3.BucketName;
+            _cdnBaseUrl = aws.CdnBaseUrl;
         }
+
 
         [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllProducts()
-        {        
+        {
             _logger.LogInformation("Entering GetAllProducts API...");
             try
             {
@@ -98,7 +108,7 @@ namespace ProductManagement.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while retrieving the products",ex.Message);
+                _logger.LogError(ex, "An error occurred while retrieving the products", ex.Message);
                 return StatusCode(500, new
                 {
                     Message = "An error occurred while retrieving the products.",
@@ -198,7 +208,7 @@ namespace ProductManagement.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while retrieving the products",ex.Message.ToString());
+                _logger.LogError(ex, "An error occurred while retrieving the products", ex.Message.ToString());
                 return StatusCode(500, new { Message = "An error occurred while retrieving the products.", ErrorMessage = ex.Message });
             }
         }
@@ -259,7 +269,7 @@ namespace ProductManagement.Controllers
         public async Task<IActionResult> GetProductById(Guid id)
         {
             _logger.LogInformation("Entering GetProductById API...");
-            
+
 
             try
             {
@@ -333,7 +343,7 @@ namespace ProductManagement.Controllers
         public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] UpdateProductDTO updateProductRequestDto)
         {
             _logger.LogInformation("Entering UpdateProduct API...");
-        
+
 
             try
             {
@@ -364,7 +374,7 @@ namespace ProductManagement.Controllers
 
                 if (updatedProduct == null)
                 {
-                    _logger.LogError(null,"Failed to update product with ID: {ProductId}", id);
+                    _logger.LogError(null, "Failed to update product with ID: {ProductId}", id);
                     return StatusCode(500, new
                     {
                         Message = "Failed to update product.",
@@ -397,7 +407,7 @@ namespace ProductManagement.Controllers
         public async Task<IActionResult> UpdateProductQuantity(Guid id, [FromBody] ProductQuantityUpdateDTO updateDto)
         {
             _logger.LogInformation("Entering UpdateProductQuantity API...");
-        
+
             try
             {
                 // Check if the product exists
@@ -455,7 +465,7 @@ namespace ProductManagement.Controllers
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
             _logger.LogInformation("Entering DeleteProduct API...");
-      
+
 
             try
             {
@@ -533,7 +543,8 @@ namespace ProductManagement.Controllers
                     {
                         ImageID = Guid.NewGuid(),
                         ProductID = productModel.ProductID,
-                        ProductImageURL = "/uploads/images/" + imageFileName, // Or you can store the full path depending on your need
+                        //ProductImageURL = "/uploads/images/" + imageFileName, // Or you can store the full path depending on your need
+                        ProductImageURL =  $"{_cdnBaseUrl}/{Uri.EscapeDataString(imageFileName)}",
                         FileName = imageFileName,
                         FileExtension = Path.GetExtension(imageFileName)
                     };
@@ -573,36 +584,51 @@ namespace ProductManagement.Controllers
             }
         }
 
-
-        private async Task<string> UploadImage(IFormFile productImage)
+        private async Task<string> UploadImage(IFormFile file)
         {
             try
             {
-                // Ensure the folder exists
-                //string uploadsFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
-
-                string uploadsFolderPath = Environment.GetEnvironmentVariable("UPLOAD_PATH") ??
-                                           Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "images");
-
-
-                // Create the folder if it doesn't exist
-                if (!Directory.Exists(uploadsFolderPath))
+                if (file == null || file.Length == 0)
                 {
-                    Directory.CreateDirectory(uploadsFolderPath);
+                    _logger.LogWarning("No file provided for upload.");
+                    return string.Empty; // No file to upload
+                }
+                
+                var bucketExists = await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, _bucket);
+
+
+                if (!bucketExists)
+                {
+                    _logger.LogError("Bucket doesn't exist");
+                    return string.Empty;
                 }
 
-                // Get the file name and path
-                string fileExtension = Path.GetExtension(productImage.FileName);
-                string fileName = Guid.NewGuid().ToString() + fileExtension;
-                string filePath = Path.Combine(uploadsFolderPath, fileName);
+                // 2) Build key = original filename (without extension) + timestamp + extension
+                var fileName = Path.GetFileNameWithoutExtension(file.FileName);
+                var ext = Path.GetExtension(file.FileName);
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmssfff");
+                fileName = $"{fileName}_{timestamp}{ext}";
 
-                // Save the image to the server's file system
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                // 3) Decide Content-Type (prefer client type, fall back by extension)
+                var contentType = !string.IsNullOrWhiteSpace(file.ContentType) &&
+                                  file.ContentType != "application/octet-stream" ? file.ContentType : Util.GetContentType(fileName);
+             
+                var request = new PutObjectRequest()
                 {
-                    await productImage.CopyToAsync(fileStream);
-                }
+                    BucketName = _bucket,
+                    Key = $"products/{fileName}",
+                    InputStream = file.OpenReadStream(),
+                    ContentType = contentType,
+                    Headers = { CacheControl = "public, max-age=31536000, immutable" }
+                };
+                request.Metadata.Add("Content-Type", file.ContentType);
+                await _s3Client.PutObjectAsync(request);
 
-                return fileName;  // Return the saved file's name
+                _logger.LogInformation($"File {fileName} uploaded to S3 successfully!");
+
+                return fileName;
+
+
             }
             catch (Exception ex)
             {

@@ -1,18 +1,21 @@
+using Amazon.Extensions.NETCore.Setup;
+using Amazon.S3;
+using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using ProductManagement.aws;
 using ProductManagement.Data;
+using ProductManagement.Logger;
+using ProductManagement.Logger.interfaces;
 using ProductManagement.Mappings;
 using ProductManagement.Repositories;
-using AutoMapper;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Data.SqlClient;
-using System.Text;
-using ProductManagement.Logger.interfaces;
-using ProductManagement.Logger;
+using Serilog;
 using Serilog.Events;
 using Serilog.Filters;
-using Serilog;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,13 +38,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Register repository
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
+//AWS S3 Configuration
+builder.Services.Configure<AwsOptions>(builder.Configuration.GetSection("AWS"));
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<IAmazonS3>();
+
 // Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigins",
     builder =>
     {
-        builder.WithOrigins("http://tradeport.cloud:3001") 
+        builder.WithOrigins("http://tradeport.cloud:3001")
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
