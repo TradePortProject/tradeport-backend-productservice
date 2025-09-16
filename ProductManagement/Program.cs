@@ -1,6 +1,8 @@
+using Amazon;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
-using AutoMapper;
+using Amazon.SecretsManager;
+using Amazon.SecretsManager.Model;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +18,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Filters;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,14 +29,43 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+//scretet manager
+var regionName = builder.Configuration["Secrets:AwsRegion"] ?? "ap-southeast-1";
+var region = RegionEndpoint.GetBySystemName(regionName);
 
-// Configure SqlClient to ignore certificate validation errors (for testing purposes)
-SqlConnectionStringBuilder sqlBuilder = new SqlConnectionStringBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
+var dbSecretName = builder.Configuration["Secrets:DbSecretName"]
+    ?? throw new InvalidOperationException("Secrets:DbSecretName is missing");
 
-sqlBuilder.Encrypt = true;
-sqlBuilder.TrustServerCertificate = true;
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(sqlBuilder.ConnectionString));
+var sm = new AmazonSecretsManagerClient(region);
+
+
+// helper
+async Task<string> GetSecretStringAsync(string name)
+{
+    var resp = await sm.GetSecretValueAsync(new GetSecretValueRequest { SecretId = name });
+    return resp.SecretString ?? "";
+}
+
+// ---- DB secret ----
+var dbJson = await GetSecretStringAsync(dbSecretName);
+
+// parse out the connection string value
+using var doc = JsonDocument.Parse(dbJson);
+var connectionStringFromSecret = doc.RootElement
+    .GetProperty("ConnectionStrings")
+    .GetProperty("tradeportdb")
+    .GetString()!;
+
+// add it into IConfiguration
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["ConnectionStrings:tradeportdb"] = connectionStringFromSecret
+});
+
+// --- Use it with EF Core ---
+var conn = builder.Configuration.GetConnectionString("tradeportdb");
+builder.Services.AddDbContext<AppDbContext>(opts =>
+    opts.UseSqlServer(conn, sql => sql.EnableRetryOnFailure()));
 
 // Register repository
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -132,18 +164,18 @@ app.UseSwaggerUI(c =>
 });
 
 // Create the folder if it doesn't exist
-string uploadPath = "/mnt/volume_sgp1_01/uploads/images";
-if (!Directory.Exists(uploadPath))
-{
-	Directory.CreateDirectory(uploadPath);
-}
-	
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "wwwroot/uploads/images")),
-    RequestPath = "/uploads/images"
-});
+//string uploadPath = "/mnt/volume_sgp1_01/uploads/images";
+//if (!Directory.Exists(uploadPath))
+//{
+//	Directory.CreateDirectory(uploadPath);
+//}
+
+//app.UseStaticFiles(new StaticFileOptions
+//{
+//    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+//        Path.Combine(builder.Environment.ContentRootPath, "wwwroot/uploads/images")),
+//    RequestPath = "/uploads/images"
+//});
 
 
 // Enable CORS with the specified policy
