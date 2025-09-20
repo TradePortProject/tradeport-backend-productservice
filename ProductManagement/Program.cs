@@ -19,6 +19,8 @@ using Serilog.Events;
 using Serilog.Filters;
 using System.Text;
 using System.Text.Json;
+using System.Linq;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +64,26 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     ["ConnectionStrings:tradeportdb"] = connectionStringFromSecret
 });
 
+//Adding JWT into IConfigurarion
+// ---- JWT secret ----
+var jwtSecretName = builder.Configuration["Secrets:JwtSecretName"]
+    ?? "tradeport/dev/user-mgmt/jwt"; 
+
+var jwtJson = await GetSecretStringAsync(jwtSecretName);
+
+// Expecting a JSON like: { "Jwt": { "Key": "...", "Issuer": "...", "Audience": "..." } }
+using var jwtDoc = JsonDocument.Parse(jwtJson);
+var jwtRoot = jwtDoc.RootElement.TryGetProperty("Jwt", out var jwtEl) ? jwtEl : jwtDoc.RootElement;
+
+// Add JWT values into IConfiguration
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["Jwt:Key"] = jwtRoot.GetProperty("Key").GetString(),
+    ["Jwt:Issuer"] = jwtRoot.GetProperty("Issuer").GetString(),
+    ["Jwt:Audience"] = jwtRoot.GetProperty("Audience").GetString()
+});
+
+
 // --- Use it with EF Core ---
 var conn = builder.Configuration.GetConnectionString("tradeportdb");
 builder.Services.AddDbContext<AppDbContext>(opts =>
@@ -81,7 +103,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigins",
     builder =>
     {
-        builder.WithOrigins("http://tradeport.cloud:3001")
+        builder.WithOrigins("http://tradeport.cloud", "https://tradeport.cloud")
                .AllowAnyHeader()
                .AllowAnyMethod()
                .AllowCredentials();
@@ -89,13 +111,13 @@ builder.Services.AddCors(options =>
 });
 
 
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(3015); 
-    options.ListenAnyIP(3016);
-    options.ListenAnyIP(3075);
-    //options.ListenAnyIP(443, listenOptions => listenOptions.UseHttps()); // HTTPS port
-});
+//builder.WebHost.ConfigureKestrel(options =>
+//{
+//    options.ListenAnyIP(3015); 
+//    options.ListenAnyIP(3016);
+//    options.ListenAnyIP(3075);
+//    //options.ListenAnyIP(443, listenOptions => listenOptions.UseHttps()); // HTTPS port
+//});
 
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
 // Configure Serilog from appsettings.json
@@ -103,7 +125,7 @@ Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)  
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("System", LogEventLevel.Warning)
-    .Filter.ByIncludingOnly(Matching.FromSource("OrderManagement.Controllers.OrderManagementController"))
+    .Filter.ByIncludingOnly(Matching.FromSource("ProductManagement.Controllers.ProductManagementController"))
     .CreateLogger();
 builder.Host.UseSerilog(); 
 // Register IAppLogger<T>
