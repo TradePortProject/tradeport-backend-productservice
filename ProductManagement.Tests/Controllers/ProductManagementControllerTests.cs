@@ -1,22 +1,28 @@
-﻿using Xunit;
+﻿
+using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Moq;
+using Newtonsoft.Json;
 using ProductManagement.Controllers;
+using ProductManagement.Logger.interfaces;
+using ProductManagement.Mappings;
+using ProductManagement.Models;
 using ProductManagement.Models.DTO;
 using ProductManagement.Repositories;
 using ProductManagement.Tests.Fixtures;
-using Moq;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using AutoMapper;
-using ProductManagement.Mappings;
-using ProductManagement.Models;
-using System.Linq.Expressions;
-using System.Text;
-using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json;
 using ProductManagement.Tests.Helpers;
-using ProductManagement.Logger.interfaces;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+using Xunit;
+using ProductManagement.aws;
+using Amazon.S3;
+using Amazon.S3.Model;
 
 namespace ProductManagement.Tests.Controllers
 {
@@ -28,6 +34,8 @@ namespace ProductManagement.Tests.Controllers
         private readonly IMapper _mapper;
         //private readonly ProductManagementController _controller;
         private readonly Mock<IAppLogger<ProductManagementController>> _mockLogger;
+        private readonly Mock<IAmazonS3> _mockS3;
+        private readonly IOptions<AwsOptions> _awsOptions;
 
         public ProductManagementControllerTests(ProductTestFixture fixture)
         {
@@ -42,6 +50,30 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo = new Mock<IProductRepository>();
             _mockImageRepo = new Mock<IProductImageRepository>();
             _mockLogger = new Mock<IAppLogger<ProductManagementController>>();
+
+            _mockS3 = new Mock<IAmazonS3>(MockBehavior.Strict);
+            _mockS3.Setup(x => x.PutObjectAsync(It.IsAny<PutObjectRequest>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new PutObjectResponse { HttpStatusCode = System.Net.HttpStatusCode.OK });
+
+            _mockS3 .Setup(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DeleteObjectResponse { HttpStatusCode = System.Net.HttpStatusCode.NoContent });
+
+            _mockS3.Setup(x => x.GetPreSignedURL(It.IsAny<GetPreSignedUrlRequest>()))
+                .Returns("https://cdn.test/presigned-url");
+
+            // 🔹 Global AwsOptions for all tests
+            _awsOptions = Options.Create(new AwsOptions
+            {
+                CdnBaseUrl = "https://cdn.test/",
+                Region = "ap-southeast-1",
+                S3 = new S3Options
+                {
+                    BucketName = "unit-test-bucket",
+                    UploadExpiryMinutes = 60,
+                    ViewExpiryMinutes = 15
+                }
+            });
+       
         }
 
         [Fact]
@@ -52,7 +84,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(repo => repo.GetAllProductsAsync()).ReturnsAsync(products);
             _mockImageRepo.Setup(repo => repo.FindByCondition(It.IsAny<System.Linq.Expressions.Expression<System.Func<ProductImage, bool>>>())).Returns(_fixture.DbContext.ProductImages);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetAllProducts();
@@ -78,7 +110,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(repo => repo.GetTotalProductCountAsync(
                 null, null, null, null, null, null, null)).ReturnsAsync(products.Count);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetFilteredProducts();
@@ -99,13 +131,13 @@ namespace ProductManagement.Tests.Controllers
             {
                 ProductName = "Updated Name",
                 Description = "Updated Desc"
-//                Category = 1
+                //                Category = 1
             };
 
             _mockProductRepo.Setup(repo => repo.GetProductByIdAsync(existingProduct.ProductID)).ReturnsAsync(new List<Product> { existingProduct });
             _mockProductRepo.Setup(repo => repo.UpdateProductAsync(existingProduct.ProductID, It.IsAny<Product>())).ReturnsAsync(existingProduct);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProduct(existingProduct.ProductID, updateDto);
@@ -124,7 +156,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(repo => repo.GetProductByIdAsync(existingProduct.ProductID)).ReturnsAsync(new List<Product> { existingProduct });
             _mockProductRepo.Setup(repo => repo.UpdateProductAsync(existingProduct.ProductID, It.IsAny<Product>())).ReturnsAsync(existingProduct);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.DeleteProduct(existingProduct.ProductID);
@@ -145,7 +177,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(repo => repo.GetProductByIdAsync(product.ProductID)).ReturnsAsync(new List<Product> { product });
             _mockProductRepo.Setup(repo => repo.UpdateProductQuantityAsync(product.ProductID, It.IsAny<Product>())).ReturnsAsync(product);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProductQuantity(product.ProductID, updateDto);
@@ -193,7 +225,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.CreateProductAsync(It.IsAny<Product>())).ReturnsAsync(product);
             _mockProductRepo.Setup(r => r.InsertProductImageAsync(It.IsAny<ProductImage>())).Returns(Task.CompletedTask);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
@@ -245,7 +277,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.CreateProductAsync(It.IsAny<Product>())).ReturnsAsync(testProduct);
             _mockProductRepo.Setup(r => r.InsertProductImageAsync(It.IsAny<ProductImage>())).Returns(Task.CompletedTask);
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
@@ -254,7 +286,7 @@ namespace ProductManagement.Tests.Controllers
             var objectResult = Assert.IsAssignableFrom<ObjectResult>(result);
             var json = JsonConvert.SerializeObject(objectResult.Value);
             Assert.Contains("Product", json);  // or "created successfully"
-            
+
             //var created = Assert.IsType<CreatedAtActionResult>(result);
             //var json = JsonConvert.SerializeObject(created.Value);
             //Assert.Contains("Product created successfully", json);
@@ -274,7 +306,7 @@ namespace ProductManagement.Tests.Controllers
             _mockImageRepo.Setup(r => r.FindByCondition(It.IsAny<System.Linq.Expressions.Expression<Func<ProductImage, bool>>>()))
                           .Returns(db.ProductImages);
 
-            var controller = new ProductManagementController(db, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(db, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetProductById(seededProducts[0].ProductID);
@@ -295,7 +327,7 @@ namespace ProductManagement.Tests.Controllers
 
             _mockProductRepo.Setup(r => r.GetProductByIdAsync(unknownId)).ReturnsAsync(new List<Product>());
 
-            var controller = new ProductManagementController(db, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(db, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetProductById(unknownId);
@@ -317,7 +349,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.GetProductByIdAsync(productId))
                             .ThrowsAsync(new Exception("DB failure"));
 
-            var controller = new ProductManagementController(db, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(db, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetProductById(productId);
@@ -338,7 +370,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.GetProductByIdAsync(productId))
                 .ReturnsAsync((List<Product>?)null); // ✅ triggers existingProduct == null
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProduct(productId, new UpdateProductDTO());
@@ -368,7 +400,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.UpdateProductAsync(productId, It.IsAny<Product>()))
                 .ReturnsAsync((Product?)null); // ✅ triggers update failure
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProduct(productId, new UpdateProductDTO());
@@ -389,7 +421,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.GetProductByIdAsync(productId))
                 .ThrowsAsync(new Exception("Simulated failure")); // ✅ triggers catch block
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProduct(productId, new UpdateProductDTO());
@@ -410,7 +442,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.GetProductByIdAsync(productId))
                 .ReturnsAsync((List<Product>?)null); // ✅ triggers NotFound
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProductQuantity(productId, new ProductQuantityUpdateDTO { Quantity = 10 });
@@ -440,7 +472,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.UpdateProductQuantityAsync(productId, It.IsAny<Product>()))
                 .ReturnsAsync((Product?)null); // ✅ triggers update failure
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProductQuantity(productId, new ProductQuantityUpdateDTO { Quantity = 99 });
@@ -461,7 +493,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.GetProductByIdAsync(productId))
                 .ThrowsAsync(new Exception("Simulated repo failure")); // ✅ triggers catch block
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProductQuantity(productId, new ProductQuantityUpdateDTO { Quantity = 25 });
@@ -493,7 +525,7 @@ namespace ProductManagement.Tests.Controllers
             _mockProductRepo.Setup(r => r.UpdateProductQuantityAsync(productId, It.IsAny<Product>()))
                 .ReturnsAsync(existing); // ✅ triggers happy path
 
-            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object);
+            var controller = new ProductManagementController(_fixture.DbContext, _mockProductRepo.Object, _mockImageRepo.Object, _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.UpdateProductQuantity(productId, new ProductQuantityUpdateDTO { Quantity = 15 });
@@ -517,7 +549,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.DeleteProduct(productId);
@@ -542,7 +574,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.DeleteProduct(productId);
@@ -578,7 +610,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.DeleteProduct(productId);
@@ -620,7 +652,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, null); // ✅ no image
@@ -674,7 +706,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockImage.Object); // ✅ triggers image upload
@@ -691,7 +723,7 @@ namespace ProductManagement.Tests.Controllers
             Assert.Contains("Product created successfully", json);
             Assert.Contains(".jpg", json); // image name present
 
-            
+
         }
 
         [Fact]
@@ -722,7 +754,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
@@ -748,7 +780,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetFilteredProducts();
@@ -797,7 +829,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetFilteredProducts();
@@ -822,7 +854,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetFilteredProducts();
@@ -845,7 +877,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             var result = await controller.GetAllProducts();
 
@@ -885,7 +917,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             var result = await controller.GetAllProducts();
 
@@ -923,7 +955,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
@@ -980,7 +1012,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
@@ -1014,7 +1046,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
@@ -1040,7 +1072,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetProductById(productId);
@@ -1065,7 +1097,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.GetProductById(productId);
@@ -1109,7 +1141,7 @@ namespace ProductManagement.Tests.Controllers
                 _fixture.DbContext,
                 _mockProductRepo.Object,
                 _mockImageRepo.Object,
-                _mapper, _mockLogger.Object);
+                _mapper, _mockLogger.Object, _mockS3.Object, _awsOptions);
 
             // Act
             var result = await controller.CreateProduct(createDto, mockFile.Object);
