@@ -49,7 +49,7 @@ jobs:
           ECR_REPOSITORY=${{ secrets.ECR_REPO_PRODUCT }}
 
           echo "🏗️ Building Frontend image with tag: $IMAGE_TAG"
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f UserManagement/Dockerfile .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f ProductManagement/Dockerfile .
           
           # Option A: Push only version tag (no 'latest')
           echo "📤 Pushing Frontend image..."
