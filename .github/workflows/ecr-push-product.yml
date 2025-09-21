@@ -1,4 +1,4 @@
-name: Build and Push Frontend to ECR with Clean-up
+name: Build and Push Product Service to ECR with Clean-up
 
 on:
   workflow_dispatch:
