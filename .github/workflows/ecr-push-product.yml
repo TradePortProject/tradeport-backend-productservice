@@ -1,23 +1,24 @@
-name: Build and Push Product Service to ECR
+name: Build and Push Frontend to ECR with Clean-up
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'ProductManagement/**'
-      - '.github/workflows/ecr-push-product.yml'
   workflow_dispatch:
+    inputs:
+      force_cleanup:
+        description: 'Force ECR cleanup even if no changes'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -25,19 +26,108 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build, tag, and push Product image to ECR
+      - name: Build, tag, and push Frontend image to ECR
         run: |
-          IMAGE_TAG=${GITHUB_SHA}
+          # Create user-friendly tags
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          BUILD_NUMBER=${GITHUB_RUN_NUMBER}   # GitHub auto-increments this: 1, 2, 3, 4...
+          
+          echo "🔢 GitHub Build Number: $BUILD_NUMBER"
+          echo "📅 Timestamp: $TIMESTAMP"
+          echo "🔍 Short SHA: $SHORT_SHA"
+          
+          # Choose your preferred tagging approach:
+          
+          # Option 1: Version-like numbering (auto-incrementing)
+          IMAGE_TAG="v1.0.${BUILD_NUMBER}"
+          
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY=${{ secrets.ECR_REPO_PRODUCT }}
 
-          echo "Building Product image..."
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-                       -f ProductManagement/Dockerfile .
-
-          echo "Pushing Product image..."
+          echo "🏗️ Building Product Service image with tag: $IMAGE_TAG"
+		      docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f UserManagement/Dockerfile .
+          
+          # Option A: Push only version tag (no 'latest')
+          echo "📤 Pushing Frontend image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-          echo "Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "✅ Pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          
+          #Option B: If you want both tags, uncomment below:
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "✅ Also pushed: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+      - name: Clean up old ECR images (keep only last 2)
+        if: success() && github.event.inputs.force_cleanup == 'true'
+        run: |
+          ECR_REPOSITORY=${{ secrets.ECR_REPO_PRODUCT }}
+          
+          echo "🧹 Cleaning up old images in $ECR_REPOSITORY..."
+          
+          # Count total images first
+          TOTAL_IMAGES=$(aws ecr describe-images \
+            --repository-name $ECR_REPOSITORY \
+            --query 'length(imageDetails)' \
+            --output text)
+          
+          echo "📊 Total images in repository: $TOTAL_IMAGES"
+          
+          # Only cleanup if we have more than 2 images
+          if [ "$TOTAL_IMAGES" -gt 2 ]; then
+            echo "🗑️ Repository has $TOTAL_IMAGES images, cleaning up old ones..."
+            
+            # Get all image digests sorted by date (newest first), skip first 2 (keep them)
+            IMAGES_TO_DELETE=$(aws ecr describe-images \
+              --repository-name $ECR_REPOSITORY \
+              --query 'sort_by(imageDetails,& imagePushedAt)[:-2].[imageDigest]' \
+              --output text)
+            
+            if [ ! -z "$IMAGES_TO_DELETE" ] && [ "$IMAGES_TO_DELETE" != "None" ]; then
+              echo "� Deleting old images..."
+              echo "$IMAGES_TO_DELETE" | while read -r digest; do
+                if [ ! -z "$digest" ]; then
+                  aws ecr batch-delete-image \
+                    --repository-name $ECR_REPOSITORY \
+                    --image-ids imageDigest=$digest
+                  echo "✅ Deleted image: ${digest:0:12}..."
+                fi
+              done
+              echo "🎯 Cleanup completed!"
+            else
+              echo "✅ No images to delete"
+            fi
+          else
+            echo "✅ Only $TOTAL_IMAGES images found, no cleanup needed"
+          fi
+
+      - name: Show remaining images and cost summary
+        if: success()
+        run: |
+          ECR_REPOSITORY=${{ secrets.ECR_REPO_PRODUCT }}
+          echo "📋 Final status for $ECR_REPOSITORY:"
+          
+          # Show remaining images with details
+          aws ecr describe-images \
+            --repository-name $ECR_REPOSITORY \
+            --query 'imageDetails[*].[imageTags[0],imageSizeInBytes,imagePushedAt]' \
+            --output table
+          
+          # Calculate total storage and cost
+          TOTAL_SIZE=$(aws ecr describe-images \
+            --repository-name $ECR_REPOSITORY \
+            --query 'sum(imageDetails[].imageSizeInBytes)' \
+            --output text)
+          
+          if [ "$TOTAL_SIZE" != "None" ] && [ "$TOTAL_SIZE" != "0" ]; then
+            TOTAL_GB=$(echo "scale=3; $TOTAL_SIZE / 1024 / 1024 / 1024" | bc -l)
+            MONTHLY_COST=$(echo "scale=2; $TOTAL_GB * 0.10" | bc -l)
+            echo "💰 Repository storage: ${TOTAL_GB} GB"
+            echo "💵 Estimated monthly cost: \$${MONTHLY_COST}"
+          else
+            echo "📊 Repository is empty"
+          fi
