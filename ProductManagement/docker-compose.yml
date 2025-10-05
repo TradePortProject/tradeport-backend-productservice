@@ -1,19 +1,26 @@
 services:
   productservice:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: productservice
+    build: .
     container_name: productservice
     ports:
-      - "3016:80"   # map host 3016 → container 80
+      - "3016:3016"
     environment:
+      - ASPNETCORE_URLS=http://+:3016
+      - DB_USER=sa
+      - DB_PASSWORD=Your_password123
+      - DB_SERVER=mssql
+      - DB_DATABASE=tradeportdb
       - AWS_REGION=ap-southeast-1
-      - ASPNETCORE_URLS=http://+:80
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    ports:
+      - "7237:80"
     networks:
       - my_network
     volumes:
-      - "C:/wwwroot/uploads/images:/app/wwwroot/uploads/images"
-
+      - "C:/wwwroot/uploads/images:/app/wwwroot/uploads/images" # Corrected volume path for Windows
 networks:
   my_network:
     external: true
+
