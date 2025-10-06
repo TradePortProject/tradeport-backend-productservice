@@ -177,6 +177,8 @@ builder.Services.AddScoped(typeof(IAppLogger<>), typeof(AppLogger<>));
 
 
 var app = builder.Build();
+app.MapGet("/health",() => "OK");
+app.MapGet("/ready", () => "Ready");
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
