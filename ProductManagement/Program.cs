@@ -32,56 +32,56 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 //scretet manager
-//var regionName = builder.Configuration["Secrets:AwsRegion"] ?? "ap-southeast-1";
-//var region = RegionEndpoint.GetBySystemName(regionName);
+var regionName = builder.Configuration["Secrets:AwsRegion"] ?? "ap-southeast-1";
+var region = RegionEndpoint.GetBySystemName(regionName);
 
-//var dbSecretName = builder.Configuration["Secrets:DbSecretName"]
-//    ?? throw new InvalidOperationException("Secrets:DbSecretName is missing");
+var dbSecretName = builder.Configuration["Secrets:DbSecretName"]
+    ?? throw new InvalidOperationException("Secrets:DbSecretName is missing");
 
-//var sm = new AmazonSecretsManagerClient(region);
+var sm = new AmazonSecretsManagerClient(region);
 
 
 // helper
-//async Task<string> GetSecretStringAsync(string name)
-//{
-//    var resp = await sm.GetSecretValueAsync(new GetSecretValueRequest { SecretId = name });
-//    return resp.SecretString ?? "";
-//}
+async Task<string> GetSecretStringAsync(string name)
+{
+    var resp = await sm.GetSecretValueAsync(new GetSecretValueRequest { SecretId = name });
+    return resp.SecretString ?? "";
+}
 
 // ---- DB secret ----
-//var dbJson = await GetSecretStringAsync(dbSecretName);
+var dbJson = await GetSecretStringAsync(dbSecretName);
 
-// parse out the connection string value
-//using var doc = JsonDocument.Parse(dbJson);
-//var connectionStringFromSecret = doc.RootElement
-//    .GetProperty("ConnectionStrings")
-//    .GetProperty("tradeportdb")
-//    .GetString()!;
+//parse out the connection string value
+using var doc = JsonDocument.Parse(dbJson);
+var connectionStringFromSecret = doc.RootElement
+    .GetProperty("ConnectionStrings")
+    .GetProperty("tradeportdb")
+    .GetString()!;
 
-//// add it into IConfiguration
-//builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-//{
-//    ["ConnectionStrings:tradeportdb"] = connectionStringFromSecret
-//});
+// add it into IConfiguration
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["ConnectionStrings:tradeportdb"] = connectionStringFromSecret
+});
 
 //Adding JWT into IConfigurarion
-// ---- JWT secret ----
-//var jwtSecretName = builder.Configuration["Secrets:JwtSecretName"]
-//    ?? "tradeport/dev/user-mgmt/jwt"; 
+//---- JWT secret ----
+var jwtSecretName = builder.Configuration["Secrets:JwtSecretName"]
+    ?? "tradeport/dev/user-mgmt/jwt"; 
 
-//var jwtJson = await GetSecretStringAsync(jwtSecretName);
+var jwtJson = await GetSecretStringAsync(jwtSecretName);
 
-//// Expecting a JSON like: { "Jwt": { "Key": "...", "Issuer": "...", "Audience": "..." } }
-//using var jwtDoc = JsonDocument.Parse(jwtJson);
-//var jwtRoot = jwtDoc.RootElement.TryGetProperty("Jwt", out var jwtEl) ? jwtEl : jwtDoc.RootElement;
+// Expecting a JSON like: { "Jwt": { "Key": "...", "Issuer": "...", "Audience": "..." } }
+using var jwtDoc = JsonDocument.Parse(jwtJson);
+var jwtRoot = jwtDoc.RootElement.TryGetProperty("Jwt", out var jwtEl) ? jwtEl : jwtDoc.RootElement;
 
-//// Add JWT values into IConfiguration
-//builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-//{
-//    ["Jwt:Key"] = jwtRoot.GetProperty("Key").GetString(),
-//    ["Jwt:Issuer"] = jwtRoot.GetProperty("Issuer").GetString(),
-//    ["Jwt:Audience"] = jwtRoot.GetProperty("Audience").GetString()
-//});
+// Add JWT values into IConfiguration
+builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+{
+    ["Jwt:Key"] = jwtRoot.GetProperty("Key").GetString(),
+    ["Jwt:Issuer"] = jwtRoot.GetProperty("Issuer").GetString(),
+    ["Jwt:Audience"] = jwtRoot.GetProperty("Audience").GetString()
+});
 
 
 // --- Use it with EF Core ---
@@ -130,50 +130,56 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog(); 
 // Register IAppLogger<T>
 builder.Services.AddScoped(typeof(IAppLogger<>), typeof(AppLogger<>));
-//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//    .AddJwtBearer(options =>
-//    {
-//        //options.RequireHttpsMetadata = false; // Set to true in production
-//        //options.SaveToken = true;
-//        options.TokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuer = true,
-//            ValidateAudience = false,
-//            ValidateLifetime = true,
-//            ValidateIssuerSigningKey = true,
-//            IssuerSigningKey = new SymmetricSecurityKey(
-//                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-//            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-//            ValidAudience = builder.Configuration["Jwt:Audience"]            
-//        };
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // Replace this line:
+        // IssuerSigningKey = new SymmetricSecurityKey(
+        //     Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
 
-//        Console.WriteLine($"Issuer: {options.TokenValidationParameters.ValidIssuer}");
+        // With this safer version:
+        var jwtKey = builder.Configuration["Jwt:Key"];
+        if (string.IsNullOrEmpty(jwtKey))
+            throw new InvalidOperationException("JWT Key is missing from configuration.");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"]
+        };
+
+        Console.WriteLine($"Issuer: {options.TokenValidationParameters.ValidIssuer}");
         
-//        options.Events = new JwtBearerEvents
-//        {
-//            OnMessageReceived = context =>
-//            {
-//                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-//                Console.WriteLine($"Authorization header: {authHeader}");
-//                return Task.CompletedTask;
-//            },
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                Console.WriteLine($"Authorization header: {authHeader}");
+                return Task.CompletedTask;
+            },
 
-//            OnChallenge = context =>
-//            {
-//                context.HandleResponse(); 
-//                context.Response.StatusCode = 401;
-//                context.Response.ContentType = "application/json";
-//                return context.Response.WriteAsync("{\"message\": \"Token is missing or invalid\"}");
-//            },
+            OnChallenge = context =>
+            {
+                context.HandleResponse(); 
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                return context.Response.WriteAsync("{\"message\": \"Token is missing or invalid\"}");
+            },
 
-//            OnAuthenticationFailed = context =>
-//            {
-//                // Log authentication failure
-//                Console.WriteLine($"Authentication failed: {context.Exception.Message}");
-//                return Task.CompletedTask;
-//            }
-//        };
-//    });
+            OnAuthenticationFailed = context =>
+            {
+                // Log authentication failure
+                Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 
 var app = builder.Build();
